@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 
+// National Averages per 100g
 const FOOD_DATABASE = {
   // --- PROTEINS ---
   "chicken breast": { calories: 165, protein: 31, carbs: 0, fats: 3.6, pieceWeight: 174 },
@@ -48,20 +49,25 @@ const FOOD_DATABASE = {
   "cheese (cheddar)": { calories: 403, protein: 25, carbs: 1.3, fats: 33, pieceWeight: 28 },
 };
 
-export default function ManualEntry({ onAdd, onClose }) {
+export default function ManualEntry({ onAdd, onClose, initialData }) {
   const [form, setForm] = useState({
-    name: '',
+    name: initialData?.name || initialData?.product?.product_name || '',
     amount: 1,
     unit: 'pc'
   });
 
-  const [manualNutrients, setManualNutrients] = useState(null);
+  const [manualNutrients, setManualNutrients] = useState(initialData ? {
+    calories: initialData.calories || Math.round(initialData.product?.nutriments['energy-kcal_100g'] || initialData.product?.nutriments['energy-kcal_serving'] || 0),
+    protein: initialData.protein || (initialData.product?.nutriments['proteins_100g'] || 0),
+    carbs: initialData.carbs || (initialData.product?.nutriments['carbohydrates_100g'] || 0),
+    fats: initialData.fats || (initialData.product?.nutriments['fat_100g'] || 0),
+  } : null);
+
   const [suggestions, setSuggestions] = useState([]);
 
-  // --- LEARNING DATABASE SEARCH ---
+  // --- SEARCH LEARNING DATABASE ---
   useEffect(() => {
     const searchLearningDB = async () => {
-      // Don't search for very short strings to save Firestore reads
       if (form.name.length < 2) {
         setSuggestions([]);
         return;
@@ -81,16 +87,13 @@ export default function ManualEntry({ onAdd, onClose }) {
       }
     };
 
-    // Debounce the search by 300ms to avoid spamming the DB while typing
     const timer = setTimeout(searchLearningDB, 300);
     return () => clearTimeout(timer);
   }, [form.name]);
 
-  // Derived Calculations
   const searchName = form.name.toLowerCase().trim();
   const baseData = FOOD_DATABASE[searchName];
   
-  // Calculate effective grams for the math
   let effectiveGrams = Number(form.amount);
   if (form.unit === 'pc' && baseData?.pieceWeight) {
     effectiveGrams = form.amount * baseData.pieceWeight;
@@ -98,17 +101,13 @@ export default function ManualEntry({ onAdd, onClose }) {
   
   const ratio = effectiveGrams / 100;
 
-  // Use manual overrides if they exist, otherwise derived from DB or empty
   const displayData = manualNutrients || (baseData ? {
     calories: Math.round(baseData.calories * ratio),
     protein: (baseData.protein * ratio).toFixed(1),
     carbs: (baseData.carbs * ratio).toFixed(1),
     fats: (baseData.fats * ratio).toFixed(1)
   } : {
-    calories: '',
-    protein: '',
-    carbs: '',
-    fats: ''
+    calories: '', protein: '', carbs: '', fats: ''
   });
 
   const handleSelectSuggestion = (prod) => {
@@ -127,6 +126,7 @@ export default function ManualEntry({ onAdd, onClose }) {
     if (typeof onAdd === 'function') {
       onAdd({
         product_name: form.name,
+        brands: initialData?.brand || initialData?.product?.brands || 'Manual Entry',
         nutriments: {
           'energy-kcal_100g': Number(displayData.calories),
           'proteins_100g': Number(displayData.protein),
@@ -142,7 +142,9 @@ export default function ManualEntry({ onAdd, onClose }) {
       <div className="bg-white w-full max-w-md p-6 rounded-[2rem] shadow-2xl animate-in slide-in-from-bottom duration-300 relative">
         
         <div className="flex justify-between items-center mb-6">
-          <h2 className="font-black text-2xl text-slate-800 tracking-tight">Quick Log</h2>
+          <h2 className="font-black text-2xl text-slate-800 tracking-tight">
+             {initialData?.isNewFromScan ? 'Confirm Scan' : initialData ? 'Edit Entry' : 'Quick Log'}
+          </h2>
           <button onClick={onClose} className="p-2 bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -152,10 +154,10 @@ export default function ManualEntry({ onAdd, onClose }) {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="relative">
-            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Search Database</label>
+            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Food Name</label>
             <input 
               type="text" 
-              placeholder="e.g. Chicken Breast, Egg, Salmon..."
+              placeholder="Search history or staples..."
               className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-slate-800 focus:border-blue-600 outline-none transition-all"
               value={form.name}
               onChange={e => {
@@ -163,17 +165,10 @@ export default function ManualEntry({ onAdd, onClose }) {
                 setManualNutrients(null);
               }}
             />
-            
-            {/* SUGGESTIONS DROPDOWN */}
             {suggestions.length > 0 && (
               <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-100 shadow-xl rounded-2xl z-20 overflow-hidden">
                 {suggestions.map((s, i) => (
-                  <button 
-                    key={i} 
-                    type="button"
-                    onClick={() => handleSelectSuggestion(s)} 
-                    className="w-full p-4 text-left hover:bg-blue-50 flex flex-col border-b border-slate-50 last:border-0"
-                  >
+                  <button key={i} type="button" onClick={() => handleSelectSuggestion(s)} className="w-full p-4 text-left hover:bg-blue-50 flex flex-col border-b border-slate-50 last:border-0">
                     <span className="font-bold text-slate-800 text-sm">{s.product_name}</span>
                     <span className="text-[10px] text-slate-400 font-black uppercase tracking-tighter">{s.brands || 'Learned Item'}</span>
                   </button>
@@ -230,33 +225,21 @@ export default function ManualEntry({ onAdd, onClose }) {
             </div>
 
             <div className="grid grid-cols-3 gap-3">
-              <div className="bg-white p-3 rounded-2xl shadow-sm">
-                <label className="block text-[10px] font-black text-red-400 uppercase mb-1">Protein</label>
-                <input 
-                  type="number" 
-                  className="w-full bg-transparent font-bold text-lg text-red-700 outline-none"
-                  value={displayData.protein}
-                  onChange={e => setManualNutrients({...displayData, protein: e.target.value})}
-                />
-              </div>
-              <div className="bg-white p-3 rounded-2xl shadow-sm">
-                <label className="block text-[10px] font-black text-green-400 uppercase mb-1">Carbs</label>
-                <input 
-                  type="number" 
-                  className="w-full bg-transparent font-bold text-lg text-green-700 outline-none"
-                  value={displayData.carbs}
-                  onChange={e => setManualNutrients({...displayData, carbs: e.target.value})}
-                />
-              </div>
-              <div className="bg-white p-3 rounded-2xl shadow-sm">
-                <label className="block text-[10px] font-black text-yellow-600 uppercase mb-1">Fat</label>
-                <input 
-                  type="number" 
-                  className="w-full bg-transparent font-bold text-lg text-yellow-800 outline-none"
-                  value={displayData.fats}
-                  onChange={e => setManualNutrients({...displayData, fats: e.target.value})}
-                />
-              </div>
+              {['protein', 'carbs', 'fats'].map((macro) => (
+                <div key={macro} className="bg-white p-3 rounded-2xl shadow-sm">
+                  <label className={`block text-[10px] font-black uppercase mb-1 ${
+                    macro === 'protein' ? 'text-red-400' : macro === 'carbs' ? 'text-green-400' : 'text-yellow-600'
+                  }`}>
+                    {macro}
+                  </label>
+                  <input 
+                    type="number" 
+                    className="w-full bg-transparent font-bold text-lg outline-none"
+                    value={displayData[macro]}
+                    onChange={e => setManualNutrients({...displayData, [macro]: e.target.value})}
+                  />
+                </div>
+              ))}
             </div>
           </div>
 
@@ -264,7 +247,7 @@ export default function ManualEntry({ onAdd, onClose }) {
             type="submit" 
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-2xl shadow-lg shadow-blue-200 active:scale-95 transition-all mt-2 uppercase tracking-widest"
           >
-            Log {displayData.calories || 0} kcal
+            {initialData?.isNewFromScan ? 'Confirm and Log' : initialData ? 'Update Entry' : `Log ${displayData.calories || 0} kcal`}
           </button>
         </form>
       </div>

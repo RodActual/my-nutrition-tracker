@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
-import { doc, onSnapshot, collection, addDoc, deleteDoc, query, where, orderBy, setDoc } from 'firebase/firestore';
+import { doc, onSnapshot, collection, addDoc, deleteDoc, query, where, orderBy, setDoc, updateDoc } from 'firebase/firestore';
 import DailyProgress from './daily-progress';
 import BarcodeScanner from './barcode-scanner';
 import WeightReminderBanner from './weight-reminder-banner';
@@ -26,6 +26,9 @@ export default function Dashboard({ userId, onSignOut }) {
   const [isManualEntryOpen, setIsManualEntryOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // State for the log currently being edited or confirmed from a scan
+  const [editingLog, setEditingLog] = useState(null);
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, "users", userId), (docSnap) => {
@@ -65,7 +68,8 @@ export default function Dashboard({ userId, onSignOut }) {
     return () => unsubLogs();
   }, [userId, selectedDate]);
 
-  const logFood = async (product) => {
+  const logFood = async (product, existingLogId = null) => {
+    // This helper extracts nutrients whether they are labeled as _serving or _100g
     const getNutrient = (keyStub) => Math.round(product.nutriments[`${keyStub}_serving`] || product.nutriments[`${keyStub}_100g`] || 0);
     
     const foodEntry = {
@@ -76,27 +80,34 @@ export default function Dashboard({ userId, onSignOut }) {
       carbs: getNutrient('carbohydrates'),
       fats: getNutrient('fat'),
       date: selectedDate,
-      timestamp: new Date().toISOString()
+      timestamp: editingLog?.timestamp || new Date().toISOString()
     };
 
     try {
-      // --- LEARNING DATABASE LOGIC ---
-      // This saves the product profile to a global collection for future searching
-      if (product.product_name) {
-        const productId = product.product_name.toLowerCase().trim();
-        await setDoc(doc(db, "products", productId), {
-          product_name: product.product_name,
-          brands: product.brands || "",
-          nutriments: product.nutriments,
-          lastLogged: new Date().toISOString()
-        }, { merge: true });
+      if (existingLogId) {
+        // UPDATE Existing Log
+        await updateDoc(doc(db, "users", userId, "logs", existingLogId), foodEntry);
+      } else {
+        // CREATE New Log
+        await addDoc(collection(db, "users", userId, "logs"), foodEntry);
+        
+        // Save to global Learning Database for shared search
+        if (product.product_name) {
+          const productId = product.product_name.toLowerCase().trim();
+          await setDoc(doc(db, "products", productId), {
+            product_name: product.product_name,
+            brands: product.brands || "",
+            nutriments: product.nutriments,
+            lastLogged: new Date().toISOString()
+          }, { merge: true });
+        }
       }
 
-      await addDoc(collection(db, "users", userId, "logs"), foodEntry);
+      setEditingLog(null);
       setIsManualEntryOpen(false);
       setCurrentTab('home');
     } catch (error) { 
-      console.error("Log error:", error); 
+      console.error("Save error:", error); 
     }
   };
 
@@ -138,10 +149,7 @@ export default function Dashboard({ userId, onSignOut }) {
             {currentTab === 'home' ? 'My Day' : currentTab === 'add' ? 'Log Entry' : 'Insights'}
           </h1>
         </div>
-        <button 
-          onClick={onSignOut} 
-          className="flex items-center gap-2 bg-slate-100 hover:bg-red-50 hover:text-red-600 px-3 py-2 rounded-xl transition-all group"
-        >
+        <button onClick={onSignOut} className="flex items-center gap-2 bg-slate-100 px-3 py-2 rounded-xl active:scale-95 transition-all">
           <span className="text-[10px] font-black uppercase tracking-tighter">Switch</span>
           <span className="text-sm">👤</span>
         </button>
@@ -150,7 +158,7 @@ export default function Dashboard({ userId, onSignOut }) {
       <div className="p-6 max-w-md mx-auto">
         {currentTab === 'home' && (
           <div className="space-y-8 animate-in fade-in slide-in-from-left duration-300">
-            <nav className="flex items-center justify-between bg-white p-2 rounded-2xl border border-slate-100 shadow-sm">
+            <nav className="flex items-center justify-between bg-white p-2 rounded-2xl border border-slate-100">
               <button onClick={() => changeDate(-1)} className="p-2 text-slate-400">◀</button>
               <p className="text-sm font-black text-slate-800">{isToday ? "Today" : selectedDate}</p>
               <button onClick={() => changeDate(1)} className="p-2 text-slate-400">▶</button>
@@ -158,25 +166,32 @@ export default function Dashboard({ userId, onSignOut }) {
             <div className="bg-white p-1 rounded-[2rem] shadow-xl shadow-slate-200/50">
               {userData?.targets && <DailyProgress targets={userData.targets} current={dailyTotals} />}
             </div>
-            <LogList logs={todaysLogs} onDelete={handleDelete} />
+            <LogList 
+              logs={todaysLogs} 
+              onDelete={handleDelete} 
+              onEdit={(log) => {
+                setEditingLog(log);
+                setIsManualEntryOpen(true);
+              }}
+            />
           </div>
         )}
 
         {currentTab === 'add' && (
           <div className="space-y-8 animate-in zoom-in-95 duration-200">
-             {!userData?.profile?.weight && (
-              <div className="bg-blue-600 p-6 rounded-[2rem] text-white shadow-xl animate-pulse">
-                <h3 className="font-black text-lg mb-1">Onboarding 🚀</h3>
-                <p className="text-blue-100 text-xs font-bold uppercase tracking-tight">Complete your profile to set calorie goals.</p>
-              </div>
-            )}
             <WaterTracker userId={userId} date={selectedDate} />
-            <div className="bg-white p-6 rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-50 space-y-6">
+            <div className="bg-white p-6 rounded-[2rem] shadow-xl border border-slate-50 space-y-6">
                 <div className="space-y-4">
-                    <button onClick={() => setIsScanning(true)} className="w-full h-20 bg-blue-600 rounded-3xl shadow-lg shadow-blue-200 text-white font-black flex items-center justify-center gap-4 active:scale-95 transition-all text-lg">
+                    <button 
+                      onClick={() => setIsScanning(true)} 
+                      className="w-full h-20 bg-blue-600 rounded-3xl text-white font-black flex items-center justify-center gap-4 active:scale-95 transition-all text-lg shadow-lg shadow-blue-100"
+                    >
                         <span className="text-2xl">📷</span> SCAN BARCODE
                     </button>
-                    <button onClick={() => setIsManualEntryOpen(true)} className="w-full h-16 bg-slate-50 border-2 border-slate-100 rounded-3xl text-slate-600 font-black flex items-center justify-center gap-3 active:scale-95 transition-all">
+                    <button 
+                      onClick={() => setIsManualEntryOpen(true)} 
+                      className="w-full h-16 bg-slate-50 border-2 border-slate-100 rounded-3xl text-slate-600 font-black flex items-center justify-center gap-3 active:scale-95 transition-all"
+                    >
                         <span>✏️</span> SEARCH / MANUAL
                     </button>
                 </div>
@@ -198,7 +213,7 @@ export default function Dashboard({ userId, onSignOut }) {
           <span className="text-2xl">🏠</span>
           <span className="text-[9px] font-black uppercase">Home</span>
         </button>
-        <button onClick={() => setCurrentTab('add')} className={`flex items-center justify-center -mt-12 w-16 h-16 rounded-full shadow-2xl transition-all border-4 border-slate-50 ${currentTab === 'add' ? 'bg-blue-600 text-white rotate-45' : 'bg-slate-800 text-white'}`}>
+        <button onClick={() => setCurrentTab('add')} className={`flex items-center justify-center -mt-12 w-16 h-16 rounded-full shadow-2xl transition-all border-4 border-slate-50 ${currentTab === 'add' ? 'bg-blue-600 text-white rotate-45 shadow-blue-200' : 'bg-slate-800 text-white shadow-slate-200'}`}>
           <span className="text-3xl font-light">+</span>
         </button>
         <button onClick={() => setCurrentTab('insights')} className={`flex flex-col items-center gap-1 flex-1 transition-all ${currentTab === 'insights' ? 'text-blue-600 scale-110' : 'text-slate-300'}`}>
@@ -208,8 +223,39 @@ export default function Dashboard({ userId, onSignOut }) {
       </nav>
 
       {isSettingsOpen && <SettingsModal userId={userId} currentProfile={userData?.profile} onClose={() => setIsSettingsOpen(false)} />}
-      {isScanning && <BarcodeScanner onResult={(p) => logFood(p)} onClose={() => setIsScanning(false)} />}
-      {isManualEntryOpen && <ManualEntry onAdd={(data) => logFood(data)} onClose={() => setIsManualEntryOpen(false)} />}
+      
+      {/* SCANNER HAND-OFF WITH DATA NORMALIZATION */}
+      {isScanning && (
+        <BarcodeScanner 
+          onResult={(p) => {
+            // Normalize the nutriment keys before sending to the ManualEntry modal
+            const normalizedProduct = {
+              ...p,
+              nutriments: {
+                'energy-kcal_100g': p.nutriments['energy-kcal_serving'] || p.nutriments['energy-kcal_100g'] || 0,
+                'proteins_100g': p.nutriments['proteins_serving'] || p.nutriments['proteins_100g'] || 0,
+                'carbohydrates_100g': p.nutriments['carbohydrates_serving'] || p.nutriments['carbohydrates_100g'] || 0,
+                'fat_100g': p.nutriments['fat_serving'] || p.nutriments['fat_100g'] || 0,
+              }
+            };
+            setEditingLog({ product: normalizedProduct, isNewFromScan: true });
+            setIsScanning(false);
+            setIsManualEntryOpen(true);
+          }} 
+          onClose={() => setIsScanning(false)} 
+        />
+      )}
+
+      {isManualEntryOpen && (
+        <ManualEntry 
+          initialData={editingLog}
+          onAdd={(data) => logFood(data, editingLog?.id)} 
+          onClose={() => {
+            setIsManualEntryOpen(false);
+            setEditingLog(null);
+          }} 
+        />
+      )}
     </main>
   );
 }
