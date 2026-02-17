@@ -8,21 +8,36 @@ import BarcodeScanner from './barcode-scanner';
 import WeightReminderBanner from './weight-reminder-banner';
 import ManualEntry from './manual-entry';
 import LogList from './log-list';
-import SettingsModal from './settings-modal'; // <--- Ensure this file exists from the previous step
+import SettingsModal from './settings-modal';
+import WeightChart from './weight-chart';
+import QuickLog from './quick-log';
+import WaterTracker from './water-tracker'; // <--- New Import
 
 export default function Dashboard({ userId, onSignOut }) {
   const [userData, setUserData] = useState(null);
   const [todaysLogs, setTodaysLogs] = useState([]); 
   const [dailyTotals, setDailyTotals] = useState({ calories: 0, protein: 0, carbs: 0, fats: 0 });
   
-  // Modal States
+  // Date State: Default to today (YYYY-MM-DD)
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+
+  // Modal & UI States
   const [isScanning, setIsScanning] = useState(false);
   const [isManualEntryOpen, setIsManualEntryOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false); // <--- New state for settings
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [scannedProduct, setScannedProduct] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // 1. Fetch User Profile
+  // Date Navigation Helpers
+  const changeDate = (days) => {
+    const current = new Date(selectedDate + 'T12:00:00'); 
+    current.setDate(current.getDate() + days);
+    setSelectedDate(current.toISOString().split('T')[0]);
+  };
+
+  const isToday = selectedDate === new Date().toISOString().split('T')[0];
+
+  // 1. Fetch User Profile & Goals
   useEffect(() => {
     const unsub = onSnapshot(doc(db, "users", userId), (doc) => {
       if (doc.exists()) {
@@ -33,16 +48,18 @@ export default function Dashboard({ userId, onSignOut }) {
     return () => unsub();
   }, [userId]);
 
-  // 2. Fetch Today's Logs
+  // 2. Fetch Logs for SELECTED DATE
   useEffect(() => {
-    const today = new Date().toISOString().split('T')[0];
     const logsRef = collection(db, "users", userId, "logs");
-    const q = query(logsRef, where("date", "==", today), orderBy("timestamp", "desc"));
+    const q = query(
+      logsRef, 
+      where("date", "==", selectedDate), 
+      orderBy("timestamp", "desc")
+    );
 
     const unsubLogs = onSnapshot(q, (snapshot) => {
       let totals = { calories: 0, protein: 0, carbs: 0, fats: 0 };
       const logs = [];
-
       snapshot.forEach((doc) => {
         const data = doc.data();
         totals.calories += data.calories || 0;
@@ -51,17 +68,15 @@ export default function Dashboard({ userId, onSignOut }) {
         totals.fats += data.fats || 0;
         logs.push({ id: doc.id, ...data });
       });
-
       setDailyTotals(totals);
       setTodaysLogs(logs);
     });
 
     return () => unsubLogs();
-  }, [userId]);
+  }, [userId, selectedDate]);
 
-  // 3. Log Food
+  // 3. Log Food (Unified function)
   const logFood = async (product) => {
-    const today = new Date().toISOString().split('T')[0];
     const getNutrient = (keyStub) => {
       return Math.round(
         product.nutriments[`${keyStub}_serving`] || 
@@ -77,7 +92,7 @@ export default function Dashboard({ userId, onSignOut }) {
       protein: getNutrient('proteins'),
       carbs: getNutrient('carbohydrates'),
       fats: getNutrient('fat'),
-      date: today,
+      date: selectedDate, // Respects current view
       timestamp: new Date().toISOString()
     };
 
@@ -103,13 +118,17 @@ export default function Dashboard({ userId, onSignOut }) {
     }
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-400 font-bold tracking-wider">LOADING...</div>;
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center text-slate-400 font-bold tracking-wider uppercase">
+      Loading Dashboard...
+    </div>
+  );
 
   return (
     <main className="min-h-screen bg-slate-50 pb-32 animate-in fade-in duration-500">
       <WeightReminderBanner lastUpdated={userData?.profile?.lastUpdated} />
 
-      {/* Enhanced Header with Settings Toggle */}
+      {/* Primary Header */}
       <header className="bg-white/80 backdrop-blur-md px-6 py-4 sticky top-0 z-10 border-b border-slate-100 flex justify-between items-center">
         <div className="flex items-center gap-3">
           <button 
@@ -123,7 +142,7 @@ export default function Dashboard({ userId, onSignOut }) {
             <h1 className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-700 to-indigo-600 capitalize">
               {userData?.profile?.name || userId.replace('_uid', '')}
             </h1>
-            <p className="text-[10px] text-slate-400 font-bold tracking-widest uppercase">Dashboard</p>
+            <p className="text-[10px] text-slate-400 font-bold tracking-widest uppercase">Overview</p>
           </div>
         </div>
         <button 
@@ -134,9 +153,36 @@ export default function Dashboard({ userId, onSignOut }) {
         </button>
       </header>
 
+      {/* Date Navigation Bar */}
+      <nav className="bg-white border-b border-slate-100 px-6 py-3 flex items-center justify-between">
+        <button 
+          onClick={() => changeDate(-1)} 
+          className="p-2 bg-slate-50 rounded-lg hover:bg-slate-100 text-slate-600 transition-colors"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+          </svg>
+        </button>
+        
+        <div className="text-center">
+          <p className="text-sm font-black text-slate-800">
+            {isToday ? "Today" : new Date(selectedDate + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}
+          </p>
+        </div>
+
+        <button 
+          onClick={() => changeDate(1)} 
+          className="p-2 bg-slate-50 rounded-lg hover:bg-slate-100 text-slate-600 transition-colors"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+          </svg>
+        </button>
+      </nav>
+
       <div className="p-6 max-w-md mx-auto space-y-8">
         
-        {/* Progress Card */}
+        {/* Progress Visualization */}
         <div className="bg-white p-1 rounded-[2rem] shadow-xl shadow-slate-200/50">
           {userData?.targets ? (
             <DailyProgress targets={userData.targets} current={dailyTotals} />
@@ -147,7 +193,16 @@ export default function Dashboard({ userId, onSignOut }) {
           )}
         </div>
 
-        {/* Action Buttons */}
+        {/* Water Tracker Integration */}
+        <WaterTracker userId={userId} date={selectedDate} />
+
+        {/* Weight Chart (Visible on 'Today' for focus) */}
+        {isToday && <WeightChart userId={userId} />}
+
+        {/* Quick Log Row */}
+        <QuickLog onLog={logFood} />
+
+        {/* Core Actions */}
         <div className="space-y-4">
           <div className="flex justify-center">
             <button 
@@ -176,7 +231,7 @@ export default function Dashboard({ userId, onSignOut }) {
 
       </div>
 
-      {/* --- MODAL RENDERING --- */}
+      {/* --- MODAL SYSTEM --- */}
 
       {isSettingsOpen && (
         <SettingsModal 
