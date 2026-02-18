@@ -1,8 +1,5 @@
-‘use client’;
+'use client';
 
-// FIX #9: Replaced the <Link href="/onboarding"> with an onOpenSettings callback.
-// The old implementation navigated away to a separate page, losing the user’s
-// current day view. Now the banner triggers the in-app SettingsModal directly.
 export default function WeightReminderBanner({ lastUpdated, onOpenSettings }) {
 if (!lastUpdated) return null;
 
