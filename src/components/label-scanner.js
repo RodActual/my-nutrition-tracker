@@ -10,7 +10,6 @@ export default function LabelScanner({ onResult, onClose }) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
-    // 🛠️ FIX: Capture the ref value in a variable inside the effect
     const currentVideoRef = videoRef.current;
     let stream = null;
 
@@ -30,7 +29,6 @@ export default function LabelScanner({ onResult, onClose }) {
 
     startCamera();
 
-    // 🛠️ FIX: Use the captured variable in the cleanup function
     return () => {
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
@@ -39,7 +37,7 @@ export default function LabelScanner({ onResult, onClose }) {
         currentVideoRef.srcObject = null;
       }
     };
-  }, []); // Empty dependency array is fine here as we use captured variables
+  }, []);
 
   const captureAndScan = async () => {
     setIsProcessing(true);
@@ -54,17 +52,17 @@ export default function LabelScanner({ onResult, onClose }) {
     ctx.drawImage(video, 0, 0);
 
     try {
-      const worker = await createWorker({
-        logger: m => { 
+      // FIX: Tesseract.js v4+ API — language is passed directly to createWorker.
+      // The old pattern of worker.loadLanguage() + worker.initialize() was removed
+      // in v4 and will throw a "worker.loadLanguage is not a function" runtime error.
+      const worker = await createWorker('eng', 1, {
+        logger: m => {
           if (m.status === 'recognizing text') {
             setProgress(parseInt(m.progress * 100));
           }
         }
       });
 
-      await worker.loadLanguage('eng');
-      await worker.initialize('eng');
-      
       const { data: { text } } = await worker.recognize(canvas.toDataURL('image/jpeg'));
       
       const parsedData = parseNutritionText(text);
@@ -90,13 +88,15 @@ export default function LabelScanner({ onResult, onClose }) {
     return {
       product_name: "Scanned Label",
       brands: "Camera OCR",
+      // Note: sodium is returned in mg here. dashboard.js logFood() will NOT apply
+      // the x1000 multiplier since this product has no source: 'Global' flag.
       nutriments: {
         'energy-kcal_100g': findNum(['calories', 'energy', 'kcal']),
         'proteins_100g': findNum(['protein']),
         'carbohydrates_100g': findNum(['carbohydrate', 'total carb', 'carbs']),
         'fat_100g': findNum(['total fat', 'fat', 'lipids']),
         'fiber_100g': findNum(['fiber', 'dietary fiber']),
-        'sodium_100g': findNum(['sodium']) / 1000, 
+        'sodium_100g': findNum(['sodium']), // already in mg from the label
         'sugars_100g': findNum(['sugars', 'total sugars']),
         'calcium_100g': findNum(['calcium']),
         'iron_100g': findNum(['iron'])

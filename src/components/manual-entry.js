@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 
-// v1.2 Staples with common micronutrient values - Full List
 const FOOD_DATABASE = {
   // --- PROTEINS ---
   "chicken breast": { calories: 165, protein: 31, carbs: 0, fats: 3.6, pieceWeight: 174, iron: 1, sodium: 74, potassium: 256, fiber: 0, sugar: 0 },
@@ -20,13 +19,13 @@ const FOOD_DATABASE = {
   // --- FRUITS ---
   "apple": { calories: 52, protein: 0.3, carbs: 14, fats: 0.2, pieceWeight: 182, fiber: 2.4, sugar: 10, vitC: 4.6, potassium: 107 },
   "banana": { calories: 89, protein: 1.1, carbs: 23, fats: 0.3, pieceWeight: 118, potassium: 358, fiber: 2.6, sugar: 12, vitC: 8.7 },
-  "blueberries": { calories: 57, protein: 0.7, carbs: 14, fats: 0.3, pieceWeight: 148, fiber: 2.4, vitC: 9.7, vitK: 19.3 },
+  "blueberries": { calories: 57, protein: 0.7, carbs: 14, fats: 0.3, pieceWeight: 148, fiber: 2.4, vitC: 9.7 },
   "strawberries": { calories: 32, protein: 0.7, carbs: 7.7, fats: 0.3, pieceWeight: 12, vitC: 58.8, fiber: 2, potassium: 153 },
   "avocado": { calories: 160, protein: 2, carbs: 9, fats: 15, pieceWeight: 200, potassium: 485, fiber: 6.7, magnesium: 29 },
   "orange": { calories: 47, protein: 0.9, carbs: 12, fats: 0.1, pieceWeight: 131, vitC: 53.2, potassium: 181, fiber: 2.4 },
 
   // --- VEGETABLES ---
-  "broccoli": { calories: 34, protein: 2.8, carbs: 7, fats: 0.4, pieceWeight: 91, vitC: 89.2, vitK: 101, potassium: 316, fiber: 2.6 },
+  "broccoli": { calories: 34, protein: 2.8, carbs: 7, fats: 0.4, pieceWeight: 91, vitC: 89.2, potassium: 316, fiber: 2.6 },
   "spinach": { calories: 23, protein: 2.9, carbs: 3.6, fats: 0.4, pieceWeight: 30, iron: 2.7, vitA: 469, calcium: 99, magnesium: 79 },
   "potato": { calories: 77, protein: 2, carbs: 17, fats: 0.1, pieceWeight: 213, potassium: 421, vitC: 19.7, fiber: 2.2 },
   "sweet potato": { calories: 86, protein: 1.6, carbs: 20, fats: 0.1, pieceWeight: 130, vitA: 709, potassium: 337, fiber: 3 },
@@ -44,7 +43,7 @@ const FOOD_DATABASE = {
   // --- PANTRY & FATS ---
   "peanut butter": { calories: 588, protein: 25, carbs: 20, fats: 50, pieceWeight: 16, magnesium: 154, potassium: 649, fiber: 6, sodium: 429 },
   "butter": { calories: 717, protein: 0.9, carbs: 0.1, fats: 81, pieceWeight: 14, vitA: 684, sodium: 11 },
-  "olive oil": { calories: 884, protein: 0, carbs: 0, fats: 100, pieceWeight: 14, vitE: 14.4, vitK: 60.2 },
+  "olive oil": { calories: 884, protein: 0, carbs: 0, fats: 100, pieceWeight: 14 },
   "almonds": { calories: 579, protein: 21, carbs: 22, fats: 50, pieceWeight: 1, magnesium: 270, calcium: 269, fiber: 12.5 },
   "cheese (cheddar)": { calories: 403, protein: 25, carbs: 1.3, fats: 33, pieceWeight: 28, calcium: 721, sodium: 621, vitA: 265 },
 };
@@ -61,7 +60,6 @@ export default function ManualEntry({ onAdd, onClose, initialData }) {
   const [isSearching, setIsSearching] = useState(false);
   const searchCache = useRef({});
 
-  // Initialize all nutrient states
   const [manualNutrients, setManualNutrients] = useState(() => {
     if (initialData) {
       const source = initialData.product ? initialData.product.nutriments : initialData;
@@ -87,7 +85,6 @@ export default function ManualEntry({ onAdd, onClose, initialData }) {
     return null;
   });
 
-  // Parallel Search Logic with Caching
   useEffect(() => {
     const searchAll = async () => {
       const term = form.name.toLowerCase().trim();
@@ -130,7 +127,6 @@ export default function ManualEntry({ onAdd, onClose, initialData }) {
     return () => clearTimeout(timer);
   }, [form.name]);
 
-  // Derived calculations for hardcoded DB
   const searchName = form.name.toLowerCase().trim();
   const baseData = FOOD_DATABASE[searchName];
   let effectiveGrams = Number(form.amount);
@@ -184,26 +180,40 @@ export default function ManualEntry({ onAdd, onClose, initialData }) {
     setSuggestions([]);
   };
 
+  // FIX: Build a submission object that always includes product_name (not just `name`)
+  // so logFood() in dashboard.js can reliably resolve it via product.product_name.
+  // Also carries the `name` field as a fallback for edit paths that read it directly.
+  const buildSubmitPayload = () => ({
+    ...displayData,
+    product_name: form.name,  // required by logFood's getNutrient/name resolution
+    name: form.name,          // required by edit log paths that read data.name directly
+    brand: '',
+    brands: '',
+  });
+
   return (
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 z-50 overflow-y-auto">
       <div className="bg-white w-full max-w-md p-6 rounded-[2rem] shadow-2xl relative my-auto animate-in slide-in-from-bottom duration-300">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="font-black text-2xl text-slate-800 tracking-tight uppercase">
+          <h2 className="font-black text-2xl text-black tracking-tight uppercase">
             {initialData?.isNewFromScan ? 'Confirm Scan' : initialData ? 'Edit Entry' : 'Quick Log'}
           </h2>
-          <button onClick={onClose} className="p-2 bg-slate-100 rounded-full text-slate-400">✕</button>
+          <button onClick={onClose} className="p-2 bg-slate-100 rounded-full text-slate-900">✕</button>
         </div>
 
         <form onSubmit={(e) => {
           e.preventDefault();
-          onAdd(displayData, initialData?.id);
+          // FIX: Pass the correctly-shaped payload instead of bare displayData.
+          // Previously, displayData had no `product_name` key, so logFood() fell
+          // through to "Unknown Item" for any food typed/selected manually.
+          onAdd(buildSubmitPayload(), initialData?.id);
         }} className="space-y-4">
           <div className="relative">
-            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 ml-1">Food Name</label>
+            <label className="block text-[10px] font-black text-slate-900 uppercase tracking-widest mb-1 ml-1">Food Name</label>
             <div className="relative">
               <input 
                 type="text" 
-                className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-slate-800 outline-none focus:border-blue-500 pr-12" 
+                className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-black outline-none focus:border-blue-500 pr-12" 
                 value={form.name} 
                 placeholder="Start typing..." 
                 onChange={e => { setForm({...form, name: e.target.value}); setManualNutrients(null); }} 
@@ -216,8 +226,8 @@ export default function ManualEntry({ onAdd, onClose, initialData }) {
                 {suggestions.map((s, i) => (
                   <button key={i} type="button" onClick={() => handleSelectSuggestion(s)} className="w-full p-4 text-left hover:bg-blue-50 border-b border-slate-50 flex justify-between items-center transition-colors">
                     <div className="flex flex-col">
-                        <span className="font-bold text-slate-800 text-sm capitalize">{s.product_name}</span>
-                        <span className="text-[10px] text-slate-400 font-bold">{s.brands}</span>
+                        <span className="font-bold text-black text-sm capitalize">{s.product_name}</span>
+                        <span className="text-[10px] text-slate-900 font-bold">{s.brands}</span>
                     </div>
                     <span className={`text-[8px] px-2 py-1 rounded-full font-black uppercase ${s.source === 'History' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
                         {s.source || 'Global'}
@@ -229,8 +239,8 @@ export default function ManualEntry({ onAdd, onClose, initialData }) {
           </div>
 
           <div className="flex gap-2">
-            <div className="flex-[2]"><label className="block text-[10px] font-black text-slate-400 uppercase mb-1 ml-1">Quantity</label><input type="number" step="0.1" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold" value={form.amount} onChange={e => setForm({...form, amount: e.target.value})} /></div>
-            <div className="flex-1"><label className="block text-[10px] font-black text-slate-400 uppercase mb-1 ml-1">Unit</label><select className="w-full p-4 bg-slate-100 border-2 border-slate-100 rounded-2xl font-bold" value={form.unit} onChange={e => setForm({...form, unit: e.target.value})}><option value="pc">Serving</option><option value="g">Grams</option></select></div>
+            <div className="flex-[2]"><label className="block text-[10px] font-black text-slate-900 uppercase mb-1 ml-1">Quantity</label><input type="number" step="0.1" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold" value={form.amount} onChange={e => setForm({...form, amount: e.target.value})} /></div>
+            <div className="flex-1"><label className="block text-[10px] font-black text-slate-900 uppercase mb-1 ml-1">Unit</label><select className="w-full p-4 bg-slate-100 border-2 border-slate-100 rounded-2xl font-bold" value={form.unit} onChange={e => setForm({...form, unit: e.target.value})}><option value="pc">Serving</option><option value="g">Grams</option></select></div>
           </div>
 
           <div className="bg-slate-50 p-5 rounded-3xl border border-slate-100 shadow-inner">
@@ -249,7 +259,7 @@ export default function ManualEntry({ onAdd, onClose, initialData }) {
               ].map((m) => (
                 <div key={m.k} className="bg-white p-3 rounded-2xl shadow-sm border border-slate-100">
                   <label className={`block text-[9px] font-black uppercase ${m.c}`}>{m.l}</label>
-                  <input type="number" step="0.1" className="w-full bg-transparent font-bold text-slate-700 outline-none" value={displayData[m.k]} onChange={e => setManualNutrients({...displayData, [m.k]: e.target.value})} />
+                  <input type="number" step="0.1" className="w-full bg-transparent font-bold text-black outline-none" value={displayData[m.k]} onChange={e => setManualNutrients({...displayData, [m.k]: e.target.value})} />
                 </div>
               ))}
             </div>
@@ -269,8 +279,8 @@ export default function ManualEntry({ onAdd, onClose, initialData }) {
                   { k: 'vitD', l: 'Vit D (IU)' }, { k: 'vitB12', l: 'Vit B12 (mcg)' }
                 ].map((m) => (
                   <div key={m.k} className="bg-white p-2.5 rounded-xl border border-slate-200">
-                    <label className="block text-[8px] font-black text-slate-400 uppercase mb-0.5">{m.l}</label>
-                    <input type="number" step="0.01" className="w-full bg-transparent font-bold text-xs text-slate-800 outline-none" value={displayData[m.k] || 0} onChange={e => setManualNutrients({...displayData, [m.k]: e.target.value})} />
+                    <label className="block text-[8px] font-black text-slate-900 uppercase mb-0.5">{m.l}</label>
+                    <input type="number" step="0.01" className="w-full bg-transparent font-bold text-xs text-black outline-none" value={displayData[m.k] || 0} onChange={e => setManualNutrients({...displayData, [m.k]: e.target.value})} />
                   </div>
                 ))}
               </div>

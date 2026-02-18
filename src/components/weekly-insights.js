@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
@@ -11,31 +11,31 @@ export default function WeeklyInsights({ userId, dailyCalorieTarget }) {
   const [macroData, setMacroData] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Helper to determine how many days are in the current selection
   const getDaysInPeriod = useCallback(() => {
     const now = new Date();
     if (viewMode === 'Today') return 1;
-    if (viewMode === 'Current Week') return now.getDay() + 1; // Days since Sunday
-    if (viewMode === 'Current Month') return now.getDate(); // Days since 1st
+    if (viewMode === 'Current Week') return now.getDay() + 1;
+    if (viewMode === 'Current Month') return now.getDate();
     return 1;
   }, [viewMode]);
 
   const daysCount = getDaysInPeriod();
 
-  // Targets calculated as DAILY averages
-  const dailyTargets = {
+  // FIX: Wrap dailyTargets in useMemo so it only recomputes when dailyCalorieTarget
+  // changes. Previously it was a plain object literal recreated on every render,
+  // which caused processData's useCallback to get a new reference each render,
+  // which triggered the useEffect on every render — an infinite fetch loop.
+  const dailyTargets = useMemo(() => ({
     protein: (dailyCalorieTarget * 0.30) / 4,
     carbs: (dailyCalorieTarget * 0.40) / 4,
     fats: (dailyCalorieTarget * 0.30) / 9
-  };
+  }), [dailyCalorieTarget]);
 
-  // --- v1.4: processData wrapped in useCallback to satisfy dependency rules ---
   const processData = useCallback((logs, mode, startDate) => {
     const dataMap = {};
     const now = new Date();
     let totalP = 0, totalC = 0, totalF = 0;
 
-    // 1. Group Calories for the Bar Chart
     if (mode === 'Today') {
       for (let i = 0; i < 24; i += 3) dataMap[i] = { label: `${i}:00`, calories: 0 };
       logs.forEach(log => {
@@ -68,14 +68,15 @@ export default function WeeklyInsights({ userId, dailyCalorieTarget }) {
 
     setChartData(Object.values(dataMap));
 
-    // 2. Average the Macros (Total / Days in selection)
     const currentDaysCount = getDaysInPeriod(); 
     setMacroData([
       { name: 'Protein', avg: totalP / currentDaysCount, target: dailyTargets.protein, color: '#f87171' },
       { name: 'Carbs', avg: totalC / currentDaysCount, target: dailyTargets.carbs, color: '#34d399' },
       { name: 'Fats', avg: totalF / currentDaysCount, target: dailyTargets.fats, color: '#fbbf24' }
     ]);
-  }, [dailyTargets.protein, dailyTargets.carbs, dailyTargets.fats, getDaysInPeriod]);
+  // FIX: dailyTargets is now a stable memoized reference, so including it here
+  // won't cause processData to be recreated on every render.
+  }, [dailyTargets, getDaysInPeriod]);
 
   useEffect(() => {
     const fetchChartData = async () => {
@@ -112,28 +113,26 @@ export default function WeeklyInsights({ userId, dailyCalorieTarget }) {
     };
 
     fetchChartData();
-  }, [userId, viewMode, processData]); // processData added here correctly
+  }, [userId, viewMode, processData]);
 
   return (
     <div className="space-y-6">
-      {/* GLOBAL TIME TOGGLE */}
       <div className="bg-white p-1 rounded-2xl shadow-sm flex border border-slate-100">
         {['Today', 'Current Week', 'Current Month'].map((mode) => (
           <button 
             key={mode} 
             onClick={() => setViewMode(mode)} 
-            className={`flex-1 py-2 text-[10px] font-black uppercase rounded-xl transition-all ${viewMode === mode ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-50'}`}
+            className={`flex-1 py-2 text-[10px] font-black uppercase rounded-xl transition-all ${viewMode === mode ? 'bg-blue-600 text-white' : 'text-slate-900 hover:bg-slate-50'}`}
           >
             {mode}
           </button>
         ))}
       </div>
 
-      {/* CALORIE CHART (TOTALS) */}
       <div className="bg-white p-6 rounded-[2rem] shadow-xl border border-slate-100">
         <div className="flex justify-between items-end mb-4">
-          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Calorie Totals</h3>
-          <span className="text-[9px] font-bold text-slate-300 italic uppercase">View: {viewMode}</span>
+          <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Calorie Totals</h3>
+          <span className="text-[9px] font-bold text-slate-700 italic uppercase">View: {viewMode}</span>
         </div>
         <div className="h-48 w-full">
           <ResponsiveContainer width="100%" height="100%">
@@ -150,12 +149,11 @@ export default function WeeklyInsights({ userId, dailyCalorieTarget }) {
         </div>
       </div>
 
-      {/* MACRO VIEW CARD (AVERAGES) */}
       <div className="bg-white p-6 rounded-[2rem] shadow-xl border border-slate-100">
         <div className="flex justify-between items-start mb-6">
           <div>
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Daily Macro Averages</h3>
-            <p className="text-[9px] text-slate-300 font-bold uppercase mt-1">Based on {daysCount} day{daysCount > 1 ? 's' : ''}</p>
+            <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Daily Macro Averages</h3>
+            <p className="text-[9px] text-slate-700 font-bold uppercase mt-1">Based on {daysCount} day{daysCount > 1 ? 's' : ''}</p>
           </div>
         </div>
 
@@ -174,8 +172,8 @@ export default function WeeklyInsights({ userId, dailyCalorieTarget }) {
             {macroData.map((m) => (
               <div key={m.name}>
                 <div className="flex justify-between items-center mb-1">
-                  <span className="text-[10px] font-black text-slate-400 uppercase">{m.name}</span>
-                  <span className="text-[10px] font-black text-slate-700">{Math.round(m.avg)} / {Math.round(m.target)}g</span>
+                  <span className="text-[10px] font-black text-slate-900 uppercase">{m.name}</span>
+                  <span className="text-[10px] font-black text-black">{Math.round(m.avg)} / {Math.round(m.target)}g</span>
                 </div>
                 <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden relative">
                   <div 

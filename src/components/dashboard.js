@@ -5,7 +5,7 @@ import { db } from '@/lib/firebase';
 import { doc, onSnapshot, collection, addDoc, deleteDoc, query, where, orderBy, setDoc, updateDoc } from 'firebase/firestore';
 import DailyProgress from './daily-progress';
 import BarcodeScanner from './barcode-scanner';
-import LabelScanner from './label-scanner'; // Added OCR Scanner Import
+import LabelScanner from './label-scanner';
 import WeightReminderBanner from './weight-reminder-banner';
 import ManualEntry from './manual-entry';
 import LogList from './log-list';
@@ -28,7 +28,7 @@ export default function Dashboard({ userId, onSignOut }) {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
   const [isScanning, setIsScanning] = useState(false);
-  const [isLabelScanning, setIsLabelScanning] = useState(false); // Added OCR State
+  const [isLabelScanning, setIsLabelScanning] = useState(false);
   const [isManualEntryOpen, setIsManualEntryOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -95,6 +95,15 @@ export default function Dashboard({ userId, onSignOut }) {
                     product[keyStub] || 0;
         return Number(val);
     };
+
+    // FIX: Unified sodium handling. Sodium from the Open Food Facts API is stored
+    // in kg/100g (e.g. 0.001 = 1mg), so we multiply by 1000 to convert to mg.
+    // Sodium from manual entry, OCR (label-scanner), and the local FOOD_DATABASE
+    // is already in mg, so no conversion is needed for those paths.
+    // We detect the "Global DB" source to apply the conversion only where required.
+    const rawSodium = getNutrient('sodium');
+    const isGlobalSource = product.source === 'Global';
+    const sodiumMg = isGlobalSource ? rawSodium * 1000 : rawSodium;
     
     const foodEntry = {
       name: product.product_name || product.name || "Unknown Item",
@@ -104,7 +113,7 @@ export default function Dashboard({ userId, onSignOut }) {
       carbs: Number(getNutrient('carbohydrates') || getNutrient('carbs')),
       fats: Number(getNutrient('fat') || getNutrient('fats')),
       fiber: getNutrient('fiber'),
-      sodium: getNutrient('sodium') * (product.source === 'Global' ? 1000 : 1), 
+      sodium: sodiumMg,
       potassium: getNutrient('potassium'),
       sugar: getNutrient('sugars') || getNutrient('sugar'),
       iron: getNutrient('iron'),
@@ -157,7 +166,7 @@ export default function Dashboard({ userId, onSignOut }) {
   const isToday = selectedDate === new Date().toISOString().split('T')[0];
 
   if (loading) return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 font-black text-slate-300 uppercase tracking-widest">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 font-black text-slate-700 uppercase tracking-widest">
       <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4" />
       Syncing...
     </div>
@@ -172,7 +181,7 @@ export default function Dashboard({ userId, onSignOut }) {
           <button onClick={() => setIsSettingsOpen(true)} className="p-2 hover:bg-slate-100 rounded-full transition-all">
             <span className="text-xl">⚙️</span>
           </button>
-          <h1 className="text-xl font-black text-slate-800 capitalize">
+          <h1 className="text-xl font-black text-black capitalize">
             {currentTab === 'home' ? 'My Day' : currentTab === 'add' ? 'Log Entry' : 'Insights'}
           </h1>
         </div>
@@ -186,9 +195,9 @@ export default function Dashboard({ userId, onSignOut }) {
         {currentTab === 'home' && (
           <div className="space-y-8 animate-in fade-in slide-in-from-left duration-300">
             <nav className="flex items-center justify-between bg-white p-2 rounded-2xl border border-slate-100 shadow-sm">
-              <button onClick={() => changeDate(-1)} className="p-2 text-slate-400">◀</button>
-              <p className="text-sm font-black text-slate-800">{isToday ? "Today" : selectedDate}</p>
-              <button onClick={() => changeDate(1)} className="p-2 text-slate-400">▶</button>
+              <button onClick={() => changeDate(-1)} className="p-2 text-slate-900">◀</button>
+              <p className="text-sm font-black text-black">{isToday ? "Today" : selectedDate}</p>
+              <button onClick={() => changeDate(1)} className="p-2 text-slate-900">▶</button>
             </nav>
 
             <div className="bg-white p-1 rounded-[2rem] shadow-xl shadow-slate-200/50">
@@ -196,7 +205,7 @@ export default function Dashboard({ userId, onSignOut }) {
             </div>
 
             <div className="bg-white p-6 rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100">
-                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Nutrient Snapshot</h3>
+                <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-widest mb-4">Nutrient Snapshot</h3>
                 <div className="grid grid-cols-3 gap-y-6 gap-x-2">
                     <MicroStat label="Fiber" value={dailyTotals.fiber} unit="g" color="text-emerald-600" />
                     <MicroStat label="Sodium" value={dailyTotals.sodium} unit="mg" color="text-orange-600" />
@@ -232,14 +241,13 @@ export default function Dashboard({ userId, onSignOut }) {
                     <button onClick={() => setIsScanning(true)} className="w-full h-20 bg-blue-600 rounded-3xl text-white font-black flex items-center justify-center gap-4 active:scale-95 transition-all text-lg shadow-lg shadow-blue-100">
                         <span className="text-2xl">📷</span> SCAN BARCODE
                     </button>
-                    {/* Added OCR Scanner Button */}
                     <button 
                       onClick={() => setIsLabelScanning(true)} 
                       className="w-full h-16 bg-slate-800 border-2 border-slate-700 rounded-3xl text-white font-black flex items-center justify-center gap-3 active:scale-95 transition-all"
                     >
                         <span>📸</span> SCAN NUTRITION FACTS
                     </button>
-                    <button onClick={() => setIsManualEntryOpen(true)} className="w-full h-16 bg-slate-50 border-2 border-slate-100 rounded-3xl text-slate-600 font-black flex items-center justify-center gap-3 active:scale-95 transition-all">
+                    <button onClick={() => setIsManualEntryOpen(true)} className="w-full h-16 bg-slate-50 border-2 border-slate-100 rounded-3xl text-black font-black flex items-center justify-center gap-3 active:scale-95 transition-all">
                         <span>✏️</span> SEARCH / MANUAL
                     </button>
                 </div>
@@ -257,14 +265,14 @@ export default function Dashboard({ userId, onSignOut }) {
       </div>
 
       <nav className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-slate-100 px-6 py-4 flex justify-between items-center z-30 shadow-2xl">
-        <button onClick={() => setCurrentTab('home')} className={`flex flex-col items-center gap-1 flex-1 transition-all ${currentTab === 'home' ? 'text-blue-600 scale-110' : 'text-slate-300'}`}>
+        <button onClick={() => setCurrentTab('home')} className={`flex flex-col items-center gap-1 flex-1 transition-all ${currentTab === 'home' ? 'text-blue-600 scale-110' : 'text-slate-700'}`}>
           <span className="text-2xl">🏠</span>
           <span className="text-[9px] font-black uppercase">Home</span>
         </button>
         <button onClick={() => setCurrentTab('add')} className={`flex items-center justify-center -mt-12 w-16 h-16 rounded-full shadow-2xl transition-all border-4 border-slate-50 ${currentTab === 'add' ? 'bg-blue-600 text-white rotate-45 shadow-blue-200' : 'bg-slate-800 text-white shadow-slate-200'}`}>
           <span className="text-3xl font-light">+</span>
         </button>
-        <button onClick={() => setCurrentTab('insights')} className={`flex flex-col items-center gap-1 flex-1 transition-all ${currentTab === 'insights' ? 'text-blue-600 scale-110' : 'text-slate-300'}`}>
+        <button onClick={() => setCurrentTab('insights')} className={`flex flex-col items-center gap-1 flex-1 transition-all ${currentTab === 'insights' ? 'text-blue-600 scale-110' : 'text-slate-700'}`}>
           <span className="text-2xl">📊</span>
           <span className="text-[9px] font-black uppercase">Charts</span>
         </button>
@@ -294,10 +302,10 @@ export default function Dashboard({ userId, onSignOut }) {
         />
       )}
 
-      {/* Added OCR Scanner Component Handler */}
       {isLabelScanning && (
         <LabelScanner 
           onResult={(p) => {
+            // OCR results have no 'source' field, so sodium won't be double-converted
             setEditingLog({ product: p, isNewFromScan: true, id: 'new-scan' });
             setIsLabelScanning(false);
             setIsManualEntryOpen(true);
@@ -323,7 +331,7 @@ export default function Dashboard({ userId, onSignOut }) {
 function MicroStat({ label, value, unit, color }) {
     return (
       <div className="text-center">
-        <p className="text-[9px] font-black text-slate-300 uppercase mb-1">{label}</p>
+        <p className="text-[9px] font-black text-slate-700 uppercase mb-1">{label}</p>
         <p className={`text-sm font-black ${color}`}>{Math.round(value || 0)}<span className="text-[10px] ml-0.5">{unit}</span></p>
       </div>
     );
@@ -333,7 +341,7 @@ function VitIcon({ label, val }) {
     const hasValue = val > 0;
     return (
       <div className={`flex flex-col items-center p-2 rounded-2xl transition-all ${hasValue ? 'bg-yellow-50 border border-yellow-100' : 'opacity-20 grayscale'}`}>
-        <span className={`text-[10px] font-black ${hasValue ? 'text-yellow-700' : 'text-slate-400'}`}>{label}</span>
+        <span className={`text-[10px] font-black ${hasValue ? 'text-yellow-700' : 'text-slate-900'}`}>{label}</span>
       </div>
     );
 }

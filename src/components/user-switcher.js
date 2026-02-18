@@ -6,8 +6,10 @@ export default function UserSwitcher({ onSelect }) {
     { id: 'madison_uid', name: 'Madison' }
   ];
 
+  // FIX: Removed the redundant localStorage.setItem call. The parent component
+  // (page.js handleSelect) already writes to localStorage, so doing it here too
+  // resulted in two writes per selection with no benefit.
   const handleSelect = (userId) => {
-    localStorage.setItem('selectedUser', userId);
     onSelect(userId);
   };
 
