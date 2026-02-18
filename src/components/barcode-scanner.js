@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Html5Qrcode } from ‘html5-qrcode’;
+import { Html5Qrcode } from 'html5-qrcode';
 
 export default function BarcodeScanner({ onResult, onClose }) {
 // FIX #6: Restore the error state that was dropped in the previous fix.
