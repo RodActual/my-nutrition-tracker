@@ -1,10 +1,5 @@
-‘use client’;
+'use client';
 
-// FIX #12: Separate the edit and delete tap targets to avoid overlap on mobile.
-// Previously the entire row (including delete button area) was a single onClick,
-// with stopPropagation on the trash icon. On mobile this caused frequent mis-taps
-// near the icon edge. Now: left ~80% of the row opens edit, delete button is a
-// fully isolated right-side zone with a generous touch target.
 export default function LogList({ logs, onDelete, onEdit }) {
 if (logs.length === 0) return null;
 
