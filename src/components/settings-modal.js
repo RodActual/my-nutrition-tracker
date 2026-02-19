@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { db } from '@/lib/firebase';
 import { doc, updateDoc, collection, addDoc } from 'firebase/firestore';
+// Assuming these helpers exist in your lib folder
 import { calculateTargets, lbsToKg, ftInToCm } from '@/lib/nutrition';
 
 export default function SettingsModal({ userId, currentProfile, onClose }) {
@@ -15,166 +16,133 @@ export default function SettingsModal({ userId, currentProfile, onClose }) {
     gender: currentProfile?.gender || 'male',
     activityLevel: currentProfile?.activityLevel || 1.2
   });
-
   const [saving, setSaving] = useState(false);
 
   const handleUpdate = async (e) => {
     e.preventDefault();
     setSaving(true);
 
-    const weightLbs = parseFloat(formData.weight);
-    const weightKg = lbsToKg(weightLbs);
-    const heightCm = ftInToCm(parseInt(formData.heightFt), parseInt(formData.heightIn));
-
-    const newTargets = calculateTargets(
-      weightKg,
-      heightCm,
-      parseInt(formData.age),
-      formData.gender,
-      // FIX #8: Parse activityLevel as a float before passing to calculateTargets
-      // and before storing. select onChange always yields a string from e.target.value,
-      // so without parseFloat it gets stored in Firestore as "1.375" (string) instead
-      // of 1.375 (number), causing subtle inconsistencies if the value is ever
-      // compared or used arithmetically elsewhere.
-      parseFloat(formData.activityLevel),
-      formData.goal
-    );
-
-    const waterGoalOz = Math.round(weightLbs * 0.6);
-
     try {
-      await updateDoc(doc(db, "users", userId), {
+      const weightLbs = parseFloat(formData.weight);
+      const weightKg = lbsToKg(weightLbs);
+      const heightCm = ftInToCm(parseInt(formData.heightFt), parseInt(formData.heightIn));
+      
+      // Calculate new calorie/macro targets
+      const newTargets = calculateTargets(
+        weightKg, 
+        heightCm, 
+        parseInt(formData.age), 
+        formData.gender, 
+        formData.activityLevel, 
+        formData.goal
+      );
+
+      // Hydration Goal: 0.6oz per lb
+      const waterGoalOz = Math.round(weightLbs * 0.6);
+
+      // CRITICAL: Update the user document
+      const userRef = doc(db, "users", userId);
+      await updateDoc(userRef, {
         profile: {
           ...formData,
           weightKg,
           heightCm,
           waterGoalOz,
-          // FIX #8: Store as number explicitly
-          activityLevel: parseFloat(formData.activityLevel),
           lastUpdated: new Date().toISOString()
         },
         targets: newTargets
       });
 
+      // Log the weight for the charts
       await addDoc(collection(db, "users", userId, "weightLogs"), {
         weight: weightLbs,
-        date: new Date().toISOString()
+        date: new Date().toISOString().split('T')[0],
+        timestamp: new Date().toISOString()
       });
 
-      alert(`Profile Updated! Your new daily water goal is ${waterGoalOz}oz.`);
       onClose();
-    } catch (error) {
-      console.error("Update failed:", error);
-      alert("Error updating settings.");
+    } catch (err) {
+      console.error("Settings Update Failed:", err);
+      alert("Error saving settings. Please ensure all fields are filled out.");
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex justify-end">
-      <div className="bg-white w-full max-w-sm h-full shadow-2xl p-6 overflow-y-auto animate-in slide-in-from-right duration-300">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+      <div className="bg-white w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in-95 duration-200">
         <div className="flex justify-between items-center mb-8">
-          <h2 className="text-2xl font-black text-black tracking-tight">Settings</h2>
-          <button onClick={onClose} className="p-2 bg-slate-100 rounded-full text-slate-900 hover:bg-slate-200 transition-colors">✕</button>
+          <h2 className="text-2xl font-black text-black uppercase tracking-tight">Profile Settings</h2>
+          <button onClick={onClose} className="p-2 bg-slate-100 rounded-full text-black">✕</button>
         </div>
 
-        <form onSubmit={handleUpdate} className="space-y-6 pb-20">
-          <div>
-            <label className="block text-[10px] font-black text-slate-900 uppercase tracking-widest mb-2">Current Weight (lbs)</label>
-            <input
-              type="number"
-              className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-black focus:border-blue-500 outline-none transition-all"
-              value={formData.weight}
-              onChange={e => setFormData({ ...formData, weight: e.target.value })}
-              required
-            />
-          </div>
-
+        <form onSubmit={handleUpdate} className="space-y-6">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-[10px] font-black text-slate-900 uppercase tracking-widest mb-2">Height (ft)</label>
-              <input
-                type="number"
-                className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-black focus:border-blue-500 outline-none"
-                value={formData.heightFt}
-                onChange={e => setFormData({ ...formData, heightFt: e.target.value })}
+              <label className="block text-[10px] font-black text-black uppercase tracking-widest mb-2 ml-1">Weight (lbs)</label>
+              <input 
+                type="number" 
                 required
+                className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-black outline-none focus:border-black"
+                value={formData.weight}
+                onChange={e => setFormData({...formData, weight: e.target.value})}
               />
             </div>
             <div>
-              <label className="block text-[10px] font-black text-slate-900 uppercase tracking-widest mb-2">Height (in)</label>
-              <input
-                type="number"
-                className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-black focus:border-blue-500 outline-none"
-                value={formData.heightIn}
-                onChange={e => setFormData({ ...formData, heightIn: e.target.value })}
+              <label className="block text-[10px] font-black text-black uppercase tracking-widest mb-2 ml-1">Age</label>
+              <input 
+                type="number" 
                 required
+                className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-black outline-none focus:border-black"
+                value={formData.age}
+                onChange={e => setFormData({...formData, age: e.target.value})}
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-[10px] font-black text-slate-900 uppercase tracking-widest mb-2">Age</label>
-            <input
-              type="number"
-              className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-black focus:border-blue-500 outline-none"
-              value={formData.age}
-              onChange={e => setFormData({ ...formData, age: e.target.value })}
-              required
-            />
+            <label className="block text-[10px] font-black text-black uppercase tracking-widest mb-2 ml-1">Height</label>
+            <div className="flex gap-2">
+              <input 
+                type="number" 
+                placeholder="Ft"
+                required
+                className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-black outline-none focus:border-black"
+                value={formData.heightFt}
+                onChange={e => setFormData({...formData, heightFt: e.target.value})}
+              />
+              <input 
+                type="number" 
+                placeholder="In"
+                required
+                className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-black outline-none focus:border-black"
+                value={formData.heightIn}
+                onChange={e => setFormData({...formData, heightIn: e.target.value})}
+              />
+            </div>
           </div>
 
           <div>
-            <label className="block text-[10px] font-black text-slate-900 uppercase tracking-widest mb-2">Biological Sex</label>
-            <select
-              className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-black focus:border-blue-500 outline-none appearance-none"
-              value={formData.gender}
-              onChange={e => setFormData({ ...formData, gender: e.target.value })}
-            >
-              <option value="male">Male</option>
-              <option value="female">Female</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-[10px] font-black text-slate-900 uppercase tracking-widest mb-2">Activity Level</label>
-            <select
-              className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-black focus:border-blue-500 outline-none appearance-none"
-              value={formData.activityLevel}
-              onChange={e => setFormData({ ...formData, activityLevel: e.target.value })}
-            >
-              <option value={1.2}>Sedentary (little or no exercise)</option>
-              <option value={1.375}>Lightly Active (1–3 days/week)</option>
-              <option value={1.55}>Moderately Active (3–5 days/week)</option>
-              <option value={1.725}>Very Active (6–7 days/week)</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-[10px] font-black text-slate-900 uppercase tracking-widest mb-2">Your Goal</label>
-            <select
-              className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-black focus:border-blue-500 outline-none appearance-none"
+            <label className="block text-[10px] font-black text-black uppercase tracking-widest mb-2 ml-1">Weekly Goal</label>
+            <select 
+              className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-black outline-none appearance-none focus:border-black"
               value={formData.goal}
-              onChange={e => setFormData({ ...formData, goal: e.target.value })}
+              onChange={e => setFormData({...formData, goal: e.target.value})}
             >
-              <option value="maintain">Maintain Weight</option>
-              <option value="lose">Lose Weight</option>
-              <option value="gain">Gain Weight</option>
+              <option value="lose">Weight Loss</option>
+              <option value="maintain">Maintenance</option>
+              <option value="gain">Muscle Gain</option>
             </select>
           </div>
 
-          <div className="pt-4">
-            <button
-              disabled={saving}
-              className="w-full bg-blue-600 text-white font-black py-4 rounded-2xl shadow-lg shadow-blue-200 active:scale-95 transition-all disabled:opacity-50 disabled:scale-100"
-            >
-              {saving ? 'SAVING DATA...' : 'UPDATE PROFILE'}
-            </button>
-            <p className="text-[9px] text-center text-slate-900 mt-4 font-bold uppercase tracking-tighter">
-              Updating weight automatically adjusts your macro targets and hydration goal.
-            </p>
-          </div>
+          <button 
+            type="submit" 
+            disabled={saving}
+            className="w-full bg-black py-5 rounded-3xl text-white font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all disabled:opacity-50"
+          >
+            {saving ? 'Saving...' : 'Update Settings'}
+          </button>
         </form>
       </div>
     </div>
