@@ -29,9 +29,9 @@ export default function SettingsModal({ userId, currentProfile, onClose }) {
       const weightLbs = parseFloat(formData.weight);
       const age = parseInt(formData.age);
       const hFt = parseInt(formData.heightFt);
-      const hIn = parseInt(formData.heightIn);
+      const hIn = parseInt(formData.heightIn) || 0;
 
-      if (!weightLbs || !age || isNaN(hFt) || isNaN(hIn)) {
+      if (!weightLbs || !age || isNaN(hFt)) {
         throw new Error("Missing numeric fields");
       }
 
@@ -129,7 +129,7 @@ export default function SettingsModal({ userId, currentProfile, onClose }) {
             <label className="block text-[10px] font-black text-black uppercase mb-1 ml-1">Height</label>
             <div className="flex gap-2">
               <input type="number" placeholder="Ft" required className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-black" value={formData.heightFt} onChange={e => setFormData({...formData, heightFt: e.target.value})} />
-              <input type="number" placeholder="In" required className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-black" value={formData.heightIn} onChange={e => setFormData({...formData, heightIn: e.target.value})} />
+              <input type="number" placeholder="0" min="0" max="11" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-black" value={formData.heightIn} onChange={e => setFormData({...formData, heightIn: e.target.value})} />
             </div>
           </div>
 
