@@ -17,10 +17,12 @@ export default function SettingsModal({ userId, currentProfile, onClose }) {
     activityLevel: currentProfile?.activityLevel || 1.2
   });
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
 
   const handleUpdate = async (e) => {
     e.preventDefault();
     setSaving(true);
+    setError(null);
 
     try {
       // 1. Validation check for all numbers
@@ -73,7 +75,15 @@ export default function SettingsModal({ userId, currentProfile, onClose }) {
       onClose();
     } catch (err) {
       console.error("Update failed:", err);
-      alert("Please check all fields. Make sure Age, Weight, and Height are numbers.");
+      if (err.message === 'Missing numeric fields') {
+        setError('Please fill in all fields with valid numbers.');
+      } else if (err.code === 'permission-denied') {
+        setError('Permission denied — check your Firestore security rules in the Firebase console.');
+      } else if (err.code === 'unavailable' || err.code === 'network-request-failed') {
+        setError('Network error — check your connection and try again.');
+      } else {
+        setError(`Save failed: ${err.message}`);
+      }
     } finally {
       setSaving(false);
     }
@@ -150,8 +160,14 @@ export default function SettingsModal({ userId, currentProfile, onClose }) {
             </select>
           </div>
 
-          <button 
-            type="submit" 
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3">
+              <p className="text-red-700 text-xs font-bold">{error}</p>
+            </div>
+          )}
+
+          <button
+            type="submit"
             disabled={saving}
             className="w-full bg-black py-5 rounded-3xl text-white font-black uppercase tracking-widest active:scale-95 transition-all disabled:opacity-50"
           >
