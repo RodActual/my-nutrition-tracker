@@ -14,7 +14,7 @@ export default function DailyProgress({ targets, current }) {
       
       <div className="space-y-6">
         {stats.map((stat) => {
-          const percentage = Math.min((stat.current / stat.target) * 100, 100);
+          const percentage = Math.min((stat.current / (stat.target || 1)) * 100, 100);
           
           return (
             <div key={stat.label}>

@@ -13,15 +13,13 @@ export default function WeeklyInsights({ userId, dailyCalorieTarget }) {
   // instead of the chart appearing empty with no feedback.
   const [loading, setLoading] = useState(true);
 
-  const getDaysInPeriod = useCallback(() => {
+  const daysCount = useMemo(() => {
     const now = new Date();
     if (viewMode === 'Today') return 1;
     if (viewMode === 'Current Week') return now.getDay() + 1;
     if (viewMode === 'Current Month') return now.getDate();
     return 1;
   }, [viewMode]);
-
-  const daysCount = getDaysInPeriod();
 
   const dailyTargets = useMemo(() => ({
     protein: (dailyCalorieTarget * 0.30) / 4,
@@ -66,13 +64,12 @@ export default function WeeklyInsights({ userId, dailyCalorieTarget }) {
 
     setChartData(Object.values(dataMap));
 
-    const currentDaysCount = getDaysInPeriod();
     setMacroData([
-      { name: 'Protein', avg: totalP / currentDaysCount, target: dailyTargets.protein, color: '#f87171' },
-      { name: 'Carbs', avg: totalC / currentDaysCount, target: dailyTargets.carbs, color: '#34d399' },
-      { name: 'Fats', avg: totalF / currentDaysCount, target: dailyTargets.fats, color: '#fbbf24' }
+      { name: 'Protein', avg: totalP / daysCount, target: dailyTargets.protein, color: '#f87171' },
+      { name: 'Carbs', avg: totalC / daysCount, target: dailyTargets.carbs, color: '#34d399' },
+      { name: 'Fats', avg: totalF / daysCount, target: dailyTargets.fats, color: '#fbbf24' }
     ]);
-  }, [dailyTargets, getDaysInPeriod]);
+  }, [dailyTargets, daysCount]);
 
   useEffect(() => {
     const fetchChartData = async () => {

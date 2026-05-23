@@ -39,6 +39,20 @@ const FOOD_DATABASE = {
   "cheese (cheddar)": { calories: 403, protein: 25, carbs: 1.3, fats: 33, pieceWeight: 28, calcium: 721, sodium: 621, vitA: 265 },
 };
 
+function mergeSuggestions(local, history, api) {
+  const seen = new Set();
+  const out = [];
+  for (const item of [...local, ...history, ...api]) {
+    const key = item.product_name.toLowerCase().trim();
+    if (!seen.has(key)) {
+      seen.add(key);
+      out.push(item);
+    }
+    if (out.length >= 10) break;
+  }
+  return out;
+}
+
 export default function ManualEntry({ onAdd, onClose, initialData }) {
   // FIX #3: When initialData comes from a scanned/API product, nutrients are
   // per 100g. Default to amount=100, unit=g so ratio=1 and values display correctly.
@@ -189,21 +203,6 @@ export default function ManualEntry({ onAdd, onClose, initialData }) {
     const timer = setTimeout(searchAll, 500);
     return () => clearTimeout(timer);
   }, [form.name]);
-
-  // Merge local, history, and API results — deduplicate by name, cap at 10
-  const mergeSuggestions = (local, history, api) => {
-    const seen = new Set();
-    const out = [];
-    for (const item of [...local, ...history, ...api]) {
-      const key = item.product_name.toLowerCase().trim();
-      if (!seen.has(key)) {
-        seen.add(key);
-        out.push(item);
-      }
-      if (out.length >= 10) break;
-    }
-    return out;
-  };
 
   const searchName = form.name.toLowerCase().trim();
   const baseData = FOOD_DATABASE[searchName];

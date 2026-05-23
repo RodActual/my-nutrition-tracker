@@ -18,6 +18,8 @@ export default function WeightChart({ userId }) {
         weight: doc.data().weight
       }));
       setData(logs);
+    }, (error) => {
+      console.error("Firestore weight chart error:", error);
     });
 
     return () => unsub();
