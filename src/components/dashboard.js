@@ -60,6 +60,9 @@ export default function Dashboard({ userId, onSignOut }) {
         setIsSettingsOpen(true);
       }
       setLoading(false);
+    }, (error) => {
+      console.error("Firestore user snapshot error:", error);
+      setLoading(false);
     });
     return () => unsub();
   }, [userId]);
@@ -96,6 +99,8 @@ export default function Dashboard({ userId, onSignOut }) {
       });
       setDailyTotals(totals);
       setTodaysLogs(logs);
+    }, (error) => {
+      console.error("Firestore logs snapshot error:", error);
     });
     return () => unsubLogs();
   }, [userId, selectedDate]);
