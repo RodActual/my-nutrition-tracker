@@ -264,7 +264,7 @@ export default function Dashboard({ userId, onSignOut }) {
 
         {currentTab === 'add' && (
           <div className="space-y-8 animate-in zoom-in-95 duration-200">
-            <WaterTracker userId={userId} date={selectedDate} />
+            <WaterTracker userId={userId} date={selectedDate} waterGoal={userData?.profile?.waterGoalOz} />
             <div className="bg-white p-6 rounded-[2rem] shadow-xl border border-slate-50 space-y-6">
               <div className="space-y-4">
                 <button onClick={() => setIsScanning(true)} className="w-full h-20 bg-blue-600 rounded-3xl text-white font-black flex items-center justify-center gap-4 active:scale-95 transition-all text-lg shadow-lg shadow-blue-100">

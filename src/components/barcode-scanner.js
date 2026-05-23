@@ -12,8 +12,10 @@ export default function BarcodeScanner({ onResult, onClose }) {
 
   const onResultRef = useRef(onResult);
   const onCloseRef = useRef(onClose);
-  useEffect(() => { onResultRef.current = onResult; }, [onResult]);
-  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+  useEffect(() => {
+    onResultRef.current = onResult;
+    onCloseRef.current = onClose;
+  }, [onResult, onClose]);
 
   const handleScanSuccess = useCallback(async (decodedText) => {
     if (!isScanningRef.current) return;

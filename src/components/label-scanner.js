@@ -6,6 +6,7 @@ import { createWorker } from 'tesseract.js';
 export default function LabelScanner({ onResult, onClose }) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [error, setError] = useState(null);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
 
@@ -23,7 +24,7 @@ export default function LabelScanner({ onResult, onClose }) {
         }
       } catch (err) {
         console.error("Camera error:", err);
-        alert("Please allow camera access to scan labels.");
+        setError("Camera access denied. Please allow camera permissions and try again.");
       }
     };
 
@@ -121,6 +122,18 @@ export default function LabelScanner({ onResult, onClose }) {
           </div>
         </div>
       </div>
+
+      {error && (
+        <div className="mt-6 bg-red-900/50 text-red-200 px-5 py-4 rounded-2xl text-sm font-bold border border-red-500/50 max-w-sm w-full text-center">
+          <p>{error}</p>
+          <button
+            onClick={onClose}
+            className="mt-3 bg-red-600 text-white text-xs font-black uppercase tracking-widest px-4 py-2 rounded-xl active:scale-95 transition-all"
+          >
+            Close
+          </button>
+        </div>
+      )}
 
       <div className="mt-10 flex flex-col items-center gap-4 w-full max-w-sm px-4">
         {isProcessing ? (

@@ -4,21 +4,14 @@ import { useState, useEffect, useRef } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, query, where, onSnapshot, addDoc, serverTimestamp, doc, deleteDoc } from 'firebase/firestore';
 
-export default function WaterTracker({ userId, date }) {
+export default function WaterTracker({ userId, date, waterGoal }) {
   const [total, setTotal] = useState(0);
-  const [goal, setGoal] = useState(64);
-  // FIX #11: Track individual log entries so the user can undo the most recent one.
+  const goal = waterGoal ?? 64;
   const [lastEntryId, setLastEntryId] = useState(null);
   const [showUndo, setShowUndo] = useState(false);
   const undoTimerRef = useRef(null);
 
   useEffect(() => {
-    const unsubProfile = onSnapshot(doc(db, "users", userId), (snap) => {
-      if (snap.exists() && snap.data().profile?.waterGoalOz) {
-        setGoal(snap.data().profile.waterGoalOz);
-      }
-    });
-
     const waterRef = collection(db, "users", userId, "waterLogs");
     const q = query(waterRef, where("date", "==", date));
 
@@ -28,10 +21,11 @@ export default function WaterTracker({ userId, date }) {
         dailyTotal += doc.data().amount || 0;
       });
       setTotal(dailyTotal);
+    }, (error) => {
+      console.error("Firestore water logs error:", error);
     });
 
     return () => {
-      unsubProfile();
       unsubWater();
       if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
     };
