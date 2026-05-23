@@ -153,7 +153,24 @@ export default function Dashboard({ userId, onSignOut }) {
           await setDoc(doc(db, "products", productId), {
             product_name: foodEntry.name,
             brands: foodEntry.brand,
-            nutriments: product.nutriments || product,
+            nutriments: {
+              'energy-kcal_100g': foodEntry.calories,
+              'proteins_100g': foodEntry.protein,
+              'carbohydrates_100g': foodEntry.carbs,
+              'fat_100g': foodEntry.fats,
+              'fiber_100g': foodEntry.fiber,
+              'sodium_100g': foodEntry.sodium,
+              'potassium_100g': foodEntry.potassium,
+              'sugars_100g': foodEntry.sugar,
+              'iron_100g': foodEntry.iron,
+              'calcium_100g': foodEntry.calcium,
+              'magnesium_100g': foodEntry.magnesium,
+              'zinc_100g': foodEntry.zinc,
+              'vitamin-a_100g': foodEntry.vitA,
+              'vitamin-c_100g': foodEntry.vitC,
+              'vitamin-d_100g': foodEntry.vitD,
+              'vitamin-b12_100g': foodEntry.vitB12,
+            },
             lastLogged: new Date().toISOString()
           }, { merge: true });
         }

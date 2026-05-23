@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { db } from '@/lib/firebase';
-import { doc, updateDoc, collection, addDoc } from 'firebase/firestore';
+import { doc, setDoc, collection, addDoc } from 'firebase/firestore';
 import { calculateTargets, lbsToKg, ftInToCm } from '@/lib/nutrition';
 
 export default function SettingsModal({ userId, currentProfile, onClose }) {
@@ -29,7 +29,7 @@ export default function SettingsModal({ userId, currentProfile, onClose }) {
       const hFt = parseInt(formData.heightFt);
       const hIn = parseInt(formData.heightIn);
 
-      if (!weightLbs || !age || isNaN(hFt)) {
+      if (!weightLbs || !age || isNaN(hFt) || isNaN(hIn)) {
         throw new Error("Missing numeric fields");
       }
 
@@ -50,7 +50,7 @@ export default function SettingsModal({ userId, currentProfile, onClose }) {
 
       // 3. Firestore Update
       const userRef = doc(db, "users", userId);
-      await updateDoc(userRef, {
+      await setDoc(userRef, {
         profile: {
           ...formData,
           weightKg,
@@ -59,14 +59,16 @@ export default function SettingsModal({ userId, currentProfile, onClose }) {
           lastUpdated: new Date().toISOString()
         },
         targets: newTargets
-      });
+      }, { merge: true });
 
-      // 4. Weight Tracking Log
-      await addDoc(collection(db, "users", userId, "weightLogs"), {
-        weight: weightLbs,
-        date: new Date().toISOString().split('T')[0],
-        timestamp: new Date().toISOString()
-      });
+      // 4. Weight Tracking Log — only when weight actually changes
+      if (!currentProfile?.weight || parseFloat(currentProfile.weight) !== weightLbs) {
+        await addDoc(collection(db, "users", userId, "weightLogs"), {
+          weight: weightLbs,
+          date: new Date().toISOString().split('T')[0],
+          timestamp: new Date().toISOString()
+        });
+      }
 
       onClose();
     } catch (err) {
