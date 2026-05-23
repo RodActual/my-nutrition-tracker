@@ -58,7 +58,6 @@ export default function ManualEntry({ onAdd, onClose, initialData }) {
   // per 100g. Default to amount=100, unit=g so ratio=1 and values display correctly.
   // Only use amount=1, unit=pc for edit paths that already have pre-resolved values.
   const isApiSource = !!(initialData?.product?.nutriments);
-  const isEditPath = !!(initialData && !initialData.isNewFromScan && !initialData.product);
 
   const [form, setForm] = useState({
     name: initialData?.name || initialData?.product?.product_name || '',
@@ -69,6 +68,9 @@ export default function ManualEntry({ onAdd, onClose, initialData }) {
   const [showMicros, setShowMicros] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [selectedSource, setSelectedSource] = useState(
+    initialData?.product?.source || null
+  );
   const searchCache = useRef({});
 
   // FIX #4: Track whether the name was pre-populated from initialData so the
@@ -115,6 +117,7 @@ export default function ManualEntry({ onAdd, onClose, initialData }) {
       // Serve from cache instantly — no spinner, no wait
       if (searchCache.current[term]) {
         setSuggestions(searchCache.current[term]);
+        setIsSearching(false);
         return;
       }
 
@@ -263,6 +266,7 @@ export default function ManualEntry({ onAdd, onClose, initialData }) {
     } else {
       setForm(f => ({ ...f, name: prod.product_name }));
     }
+    setSelectedSource(prod.source || null);
     setSuggestions([]);
   };
 
@@ -272,6 +276,7 @@ export default function ManualEntry({ onAdd, onClose, initialData }) {
     name: form.name,
     brand: '',
     brands: '',
+    source: selectedSource,
   });
 
   return (
