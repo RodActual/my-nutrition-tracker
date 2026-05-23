@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { db } from '@/lib/firebase';
 import { doc, onSnapshot, collection, addDoc, deleteDoc, query, where, orderBy, setDoc, updateDoc } from 'firebase/firestore';
 import DailyProgress from './daily-progress';
@@ -14,6 +14,8 @@ import WeightChart from './weight-chart';
 import QuickLog from './quick-log';
 import WaterTracker from './water-tracker';
 import WeeklyInsights from './weekly-insights';
+import NutritionInsights from './nutrition-insights';
+import { getNutritionInsights } from '@/lib/insights';
 
 export default function Dashboard({ userId, onSignOut }) {
   const [userData, setUserData] = useState(null);
@@ -45,6 +47,8 @@ export default function Dashboard({ userId, onSignOut }) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [editingLog, setEditingLog] = useState(null);
+  const [logInsights, setLogInsights] = useState(null);
+  const insightsTimerRef = useRef(null);
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, "users", userId), (docSnap) => {
@@ -148,6 +152,12 @@ export default function Dashboard({ userId, onSignOut }) {
         await updateDoc(doc(db, "users", userId, "logs", existingLogId), foodEntry);
       } else {
         await addDoc(collection(db, "users", userId, "logs"), foodEntry);
+        const insights = getNutritionInsights(foodEntry);
+        if (insights.length > 0) {
+          if (insightsTimerRef.current) clearTimeout(insightsTimerRef.current);
+          setLogInsights({ name: foodEntry.name, insights });
+          insightsTimerRef.current = setTimeout(() => setLogInsights(null), 6000);
+        }
         if (foodEntry.name) {
           const productId = foodEntry.name.toLowerCase().trim();
           await setDoc(doc(db, "products", productId), {
@@ -366,6 +376,17 @@ export default function Dashboard({ userId, onSignOut }) {
           initialData={editingLog}
           onAdd={(data, id) => logFood(data, id)}
           onClose={handleManualEntryClose}
+        />
+      )}
+
+      {logInsights && (
+        <NutritionInsights
+          foodName={logInsights.name}
+          insights={logInsights.insights}
+          onDismiss={() => {
+            if (insightsTimerRef.current) clearTimeout(insightsTimerRef.current);
+            setLogInsights(null);
+          }}
         />
       )}
     </main>
