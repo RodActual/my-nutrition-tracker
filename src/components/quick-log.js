@@ -62,7 +62,7 @@ const QUICK_ITEMS = [
   },
 ];
 
-export default function QuickLog({ onAdd }) {
+export default function QuickLog({ onAdd = () => {} }) {
   const handleTap = (item) => {
     onAdd({
       name: item.label,
@@ -87,10 +87,11 @@ export default function QuickLog({ onAdd }) {
           return (
             <button
               key={item.label}
+              type="button"
               onClick={() => handleTap(item)}
               className="bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 rounded-2xl p-3 flex flex-col items-center gap-2 cursor-pointer transition-colors"
             >
-              <Icon size={20} className="text-emerald-400" />
+              {Icon && <Icon size={20} className="text-emerald-400" aria-hidden="true" />}
               <span className="text-xs text-zinc-300 text-center leading-tight">{item.label}</span>
               <span className="text-xs text-zinc-500">{item.calories} kcal</span>
             </button>
