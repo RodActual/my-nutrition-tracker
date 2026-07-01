@@ -35,7 +35,7 @@ export default function WeeklyInsights({ dailyCalorieTarget }) {
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       const logs = storage.getLogs(dateStr);
       const calories = logs.reduce((sum, l) => sum + (l.calories || 0), 0);
       const protein = logs.reduce((sum, l) => sum + (l.protein || 0), 0);
@@ -82,6 +82,7 @@ export default function WeeklyInsights({ dailyCalorieTarget }) {
             tickLine={false}
           />
           <YAxis
+            domain={[0, 'auto']}
             tick={{ fill: '#a1a1aa', fontSize: 11 }}
             axisLine={false}
             tickLine={false}
