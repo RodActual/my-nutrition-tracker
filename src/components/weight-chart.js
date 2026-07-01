@@ -13,7 +13,7 @@ function CustomTooltip({ active, payload }) {
   return (
     <div className="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm">
       <p className="text-slate-100 font-medium">{payload[0].value} lbs</p>
-      <p className="text-zinc-400">{payload[0].payload.date}</p>
+      <p className="text-zinc-400">{payload[0].payload.label}</p>
     </div>
   );
 }
@@ -22,7 +22,9 @@ export default function WeightChart() {
   const [data, setData] = useState([]);
 
   useEffect(() => {
-    const logs = storage.getWeightLogs();
+    const logs = storage.getWeightLogs()
+      .slice()
+      .sort((a, b) => a.date.localeCompare(b.date));
     setData(logs.map(l => ({ ...l, label: formatDate(l.date) })));
   }, []);
 
@@ -39,9 +41,9 @@ export default function WeightChart() {
         <LineChart data={data}>
           <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" />
           <XAxis dataKey="label" tick={{ fill: '#a1a1aa', fontSize: 11 }} />
-          <YAxis tick={{ fill: '#a1a1aa', fontSize: 11 }} domain={['auto', 'auto']} />
+          <YAxis tick={{ fill: '#a1a1aa', fontSize: 11 }} domain={([min, max]) => min === max ? [min - 5, max + 5] : ['auto', 'auto']} />
           <Tooltip content={<CustomTooltip />} />
-          <Line type="monotone" dataKey="weight" stroke="#10b981" strokeWidth={2} dot={false} />
+          <Line type="monotone" dataKey="weight" stroke="#10b981" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: '#10b981' }} />
         </LineChart>
       </ResponsiveContainer>
     </div>
