@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, Search } from 'lucide-react';
 import { storage } from '@/lib/storage';
 
@@ -14,6 +14,17 @@ export default function ManualEntry({ onAdd, editingLog, onClose }) {
   const [sodium, setSodium] = useState(editingLog?.sodium ?? '');
   const [sugar, setSugar] = useState(editingLog?.sugar ?? '');
   const [results, setResults] = useState([]);
+  const searchRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (searchRef.current && !searchRef.current.contains(e.target)) {
+        setResults([]);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     if (name.trim().length > 1) {
@@ -62,14 +73,14 @@ export default function ManualEntry({ onAdd, editingLog, onClose }) {
           <h2 className="text-lg font-semibold text-slate-100">
             {editingLog ? 'Edit Food' : 'Log Food'}
           </h2>
-          <button onClick={onClose} className="text-zinc-400 hover:text-slate-100">
+          <button onClick={onClose} aria-label="Close" className="text-zinc-400 hover:text-slate-100">
             <X size={20} />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Name + search */}
-          <div className="relative">
+          <div className="relative" ref={searchRef}>
             <label className="block text-xs text-zinc-400 mb-1">Food Name</label>
             <div className="relative">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
@@ -78,6 +89,7 @@ export default function ManualEntry({ onAdd, editingLog, onClose }) {
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Escape') setResults([]); }}
                 placeholder="Search or type food name..."
                 className={`${inputClass} pl-9`}
               />
@@ -86,7 +98,7 @@ export default function ManualEntry({ onAdd, editingLog, onClose }) {
             {results.length > 0 && (
               <ul className="absolute top-full left-0 right-0 mt-1 bg-zinc-800 border border-zinc-700 rounded-xl overflow-hidden z-10">
                 {results.map((item, i) => (
-                  <li key={i}>
+                  <li key={item.name ?? i}>
                     <button
                       type="button"
                       onClick={() => handleSelect(item)}
