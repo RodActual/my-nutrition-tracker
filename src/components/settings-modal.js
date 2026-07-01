@@ -30,10 +30,39 @@ export default function SettingsModal({ currentProfile, onClose }) {
   }, []);
 
   const handleSave = () => {
-    storage.setProfile({ name, age, weight, height, goalWeight, activityLevel, waterGoalOz: water });
-    storage.setTargets({ calories, protein, carbs, fat, water });
-    if (currentProfile?.weight && Number(weight) !== Number(currentProfile.weight)) {
-      storage.addWeightLog({ weight: Number(weight), date: new Date().toISOString().split('T')[0] });
+    if (!calories || isNaN(Number(calories)) || Number(calories) <= 0) {
+      alert('Please enter a valid daily calorie target.');
+      return;
+    }
+
+    const parsedAge = age === '' ? null : Number(age);
+    const parsedWeight = weight === '' ? null : Number(weight);
+    const parsedHeight = height === '' ? null : Number(height);
+    const parsedGoalWeight = goalWeight === '' ? null : Number(goalWeight);
+    const parsedWater = water === '' ? null : Number(water);
+    const parsedCalories = calories === '' ? null : Number(calories);
+    const parsedProtein = protein === '' ? null : Number(protein);
+    const parsedCarbs = carbs === '' ? null : Number(carbs);
+    const parsedFat = fat === '' ? null : Number(fat);
+
+    storage.setProfile({
+      name,
+      age: parsedAge,
+      weight: parsedWeight,
+      height: parsedHeight,
+      goalWeight: parsedGoalWeight,
+      activityLevel,
+      waterGoalOz: parsedWater,
+    });
+    storage.setTargets({
+      calories: parsedCalories,
+      protein: parsedProtein,
+      carbs: parsedCarbs,
+      fat: parsedFat,
+      water: parsedWater,
+    });
+    if (currentProfile?.weight != null && parsedWeight != null && Number(currentProfile.weight) !== parsedWeight) {
+      storage.addWeightLog({ weight: parsedWeight, date: new Date().toISOString().split('T')[0] });
     }
     onClose();
   };
@@ -64,6 +93,7 @@ export default function SettingsModal({ currentProfile, onClose }) {
             <label className="block text-xs text-zinc-400 mb-1">Age</label>
             <input
               type="number"
+              min="0"
               value={age}
               onChange={e => setAge(e.target.value)}
               className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
@@ -73,6 +103,7 @@ export default function SettingsModal({ currentProfile, onClose }) {
             <label className="block text-xs text-zinc-400 mb-1">Weight (lbs)</label>
             <input
               type="number"
+              min="0"
               value={weight}
               onChange={e => setWeight(e.target.value)}
               className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
@@ -82,6 +113,7 @@ export default function SettingsModal({ currentProfile, onClose }) {
             <label className="block text-xs text-zinc-400 mb-1">Height (inches)</label>
             <input
               type="number"
+              min="0"
               value={height}
               onChange={e => setHeight(e.target.value)}
               className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
@@ -91,6 +123,7 @@ export default function SettingsModal({ currentProfile, onClose }) {
             <label className="block text-xs text-zinc-400 mb-1">Goal Weight (lbs)</label>
             <input
               type="number"
+              min="0"
               value={goalWeight}
               onChange={e => setGoalWeight(e.target.value)}
               className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
@@ -119,6 +152,7 @@ export default function SettingsModal({ currentProfile, onClose }) {
             <label className="block text-xs text-zinc-400 mb-1">Calories</label>
             <input
               type="number"
+              min="0"
               value={calories}
               onChange={e => setCalories(e.target.value)}
               className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
@@ -128,6 +162,7 @@ export default function SettingsModal({ currentProfile, onClose }) {
             <label className="block text-xs text-zinc-400 mb-1">Protein (g)</label>
             <input
               type="number"
+              min="0"
               value={protein}
               onChange={e => setProtein(e.target.value)}
               className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
@@ -137,6 +172,7 @@ export default function SettingsModal({ currentProfile, onClose }) {
             <label className="block text-xs text-zinc-400 mb-1">Carbs (g)</label>
             <input
               type="number"
+              min="0"
               value={carbs}
               onChange={e => setCarbs(e.target.value)}
               className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
@@ -146,6 +182,7 @@ export default function SettingsModal({ currentProfile, onClose }) {
             <label className="block text-xs text-zinc-400 mb-1">Fat (g)</label>
             <input
               type="number"
+              min="0"
               value={fat}
               onChange={e => setFat(e.target.value)}
               className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
@@ -155,6 +192,7 @@ export default function SettingsModal({ currentProfile, onClose }) {
             <label className="block text-xs text-zinc-400 mb-1">Water (oz)</label>
             <input
               type="number"
+              min="0"
               value={water}
               onChange={e => setWater(e.target.value)}
               className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
