@@ -14,7 +14,7 @@ export default function WaterTracker({ date, waterGoal = 64 }) {
   }, [date]);
 
   const consumed = waterLogs.reduce((sum, log) => sum + (log.amount || 0), 0);
-  const progress = Math.min((consumed / waterGoal) * 100, 100);
+  const progress = waterGoal > 0 ? Math.min((consumed / waterGoal) * 100, 100) : 0;
 
   const addWater = (amount) => {
     storage.addWaterLog({ amount, date });
@@ -85,6 +85,9 @@ export default function WaterTracker({ date, waterGoal = 64 }) {
       </div>
 
       {/* Log list */}
+      {waterLogs.length === 0 && (
+        <p className="text-zinc-500 text-xs text-center py-2">No entries yet</p>
+      )}
       {waterLogs.length > 0 && (
         <ul className="space-y-1">
           {waterLogs.map((log) => (
