@@ -221,7 +221,7 @@ export default function Dashboard() {
                 <Zap size={18} /> Search / Manual Entry
               </button>
             </div>
-            <QuickLog onLog={logFood} />
+            <QuickLog onAdd={logFood} />
           </div>
         )}
 
