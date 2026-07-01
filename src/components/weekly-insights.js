@@ -1,196 +1,98 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
+import { useState, useEffect } from 'react';
+import { storage } from '@/lib/storage';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  ReferenceLine,
+} from 'recharts';
 
-export default function WeeklyInsights({ userId, dailyCalorieTarget }) {
-  const [viewMode, setViewMode] = useState('Current Week');
-  const [chartData, setChartData] = useState([]);
-  const [macroData, setMacroData] = useState([]);
-  // FIX #5: loading is now consumed in the JSX to show a spinner while data fetches
-  // instead of the chart appearing empty with no feedback.
-  const [loading, setLoading] = useState(true);
+function WeeklyTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+  const unit = payload[0].name === 'calories' ? 'kcal' : 'g';
+  return (
+    <div className="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm">
+      <p className="text-zinc-400 text-xs">{label}</p>
+      <p className="text-slate-100 font-medium">
+        {Math.round(payload[0].value)} {unit}
+      </p>
+    </div>
+  );
+}
 
-  const daysCount = useMemo(() => {
-    const now = new Date();
-    if (viewMode === 'Today') return 1;
-    if (viewMode === 'Current Week') return now.getDay() + 1;
-    if (viewMode === 'Current Month') return now.getDate();
-    return 1;
-  }, [viewMode]);
-
-  const dailyTargets = useMemo(() => ({
-    protein: (dailyCalorieTarget * 0.30) / 4,
-    carbs: (dailyCalorieTarget * 0.40) / 4,
-    fats: (dailyCalorieTarget * 0.30) / 9
-  }), [dailyCalorieTarget]);
-
-  const processData = useCallback((logs, mode, startDate) => {
-    const dataMap = {};
-    const now = new Date();
-    let totalP = 0, totalC = 0, totalF = 0;
-
-    if (mode === 'Today') {
-      for (let i = 0; i < 24; i += 3) dataMap[i] = { label: `${i}:00`, calories: 0 };
-      logs.forEach(log => {
-        const hour = new Date(log.timestamp).getHours();
-        const block = Math.floor(hour / 3) * 3;
-        if (dataMap[block]) dataMap[block].calories += log.calories || 0;
-        totalP += log.protein || 0; totalC += log.carbs || 0; totalF += log.fats || 0;
-      });
-    } else if (mode === 'Current Week') {
-      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-      for (let i = 0; i <= now.getDay(); i++) {
-        const d = new Date(startDate);
-        d.setDate(startDate.getDate() + i);
-        dataMap[days[d.getDay()]] = { label: days[d.getDay()], calories: 0 };
-      }
-      logs.forEach(log => {
-        const dayName = days[new Date(log.timestamp).getDay()];
-        if (dataMap[dayName]) dataMap[dayName].calories += log.calories || 0;
-        totalP += log.protein || 0; totalC += log.carbs || 0; totalF += log.fats || 0;
-      });
-    } else {
-      const lastDay = now.getDate();
-      for (let i = 1; i <= lastDay; i++) dataMap[i.toString()] = { label: i.toString(), calories: 0 };
-      logs.forEach(log => {
-        const dateDay = new Date(log.timestamp).getDate().toString();
-        if (dataMap[dateDay]) dataMap[dateDay].calories += log.calories || 0;
-        totalP += log.protein || 0; totalC += log.carbs || 0; totalF += log.fats || 0;
-      });
-    }
-
-    setChartData(Object.values(dataMap));
-
-    setMacroData([
-      { name: 'Protein', avg: totalP / daysCount, target: dailyTargets.protein, color: '#f87171' },
-      { name: 'Carbs', avg: totalC / daysCount, target: dailyTargets.carbs, color: '#34d399' },
-      { name: 'Fats', avg: totalF / daysCount, target: dailyTargets.fats, color: '#fbbf24' }
-    ]);
-  }, [dailyTargets, daysCount]);
+export default function WeeklyInsights({ dailyCalorieTarget }) {
+  const [weekData, setWeekData] = useState([]);
+  const [activeTab, setActiveTab] = useState('calories');
 
   useEffect(() => {
-    const fetchChartData = async () => {
-      setLoading(true);
-      const now = new Date();
-      let startDate = new Date();
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      const logs = storage.getLogs(dateStr);
+      const calories = logs.reduce((sum, l) => sum + (l.calories || 0), 0);
+      const protein = logs.reduce((sum, l) => sum + (l.protein || 0), 0);
+      days.push({
+        date: dateStr,
+        label: d.toLocaleDateString('en-US', { weekday: 'short' }),
+        calories: Math.round(calories),
+        protein: Math.round(protein),
+      });
+    }
+    setWeekData(days);
+  }, []);
 
-      if (viewMode === 'Today') {
-        startDate.setHours(0, 0, 0, 0);
-      } else if (viewMode === 'Current Week') {
-        startDate.setDate(now.getDate() - now.getDay());
-        startDate.setHours(0, 0, 0, 0);
-      } else if (viewMode === 'Current Month') {
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-      }
-
-      try {
-        const logsRef = collection(db, "users", userId, "logs");
-        const q = query(
-          logsRef,
-          where("timestamp", ">=", startDate.toISOString()),
-          orderBy("timestamp", "asc")
-        );
-
-        const snapshot = await getDocs(q);
-        const logs = snapshot.docs.map(doc => doc.data());
-        processData(logs, viewMode, startDate);
-      } catch (err) {
-        console.error("Chart fetch error:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchChartData();
-  }, [userId, viewMode, processData]);
+  const isCalories = activeTab === 'calories';
+  const barColor = isCalories ? '#10b981' : '#f43f5e';
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white p-1 rounded-2xl shadow-sm flex border border-slate-100">
-        {['Today', 'Current Week', 'Current Month'].map((mode) => (
+    <div className="bg-zinc-900 rounded-3xl border border-zinc-800 p-5">
+      <p className="text-sm font-semibold text-slate-100 mb-4">Weekly</p>
+
+      <div className="flex gap-2 mb-4">
+        {['calories', 'protein'].map((tab) => (
           <button
-            key={mode}
-            onClick={() => setViewMode(mode)}
-            className={`flex-1 py-2 text-[10px] font-black uppercase rounded-xl transition-all ${viewMode === mode ? 'bg-blue-600 text-white' : 'text-slate-900 hover:bg-slate-50'}`}
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={
+              activeTab === tab
+                ? 'bg-emerald-500 text-zinc-950 text-xs font-semibold px-3 py-1 rounded-full'
+                : 'bg-zinc-800 text-zinc-400 text-xs px-3 py-1 rounded-full hover:text-slate-200'
+            }
           >
-            {mode}
+            {tab.charAt(0).toUpperCase() + tab.slice(1)}
           </button>
         ))}
       </div>
 
-      {/* FIX #5: Show a loading spinner while data is fetching instead of empty charts */}
-      {loading ? (
-        <div className="bg-white p-12 rounded-[2rem] shadow-xl border border-slate-100 flex flex-col items-center justify-center gap-3">
-          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-          <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Loading data...</p>
-        </div>
-      ) : (
-        <>
-          <div className="bg-white p-6 rounded-[2rem] shadow-xl border border-slate-100">
-            <div className="flex justify-between items-end mb-4">
-              <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Calorie Totals</h3>
-              <span className="text-[9px] font-bold text-slate-700 italic uppercase">View: {viewMode}</span>
-            </div>
-            <div className="h-48 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 900, fill: '#1e293b' }} interval={viewMode === 'Current Month' ? 5 : 0} />
-                  <Bar dataKey="calories" radius={[4, 4, 4, 4]} barSize={viewMode === 'Current Month' ? 6 : 16}>
-                    {chartData.map((entry, index) => (
-                      <Cell key={index} fill={entry.calories > dailyCalorieTarget ? '#f87171' : '#3b82f6'} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-[2rem] shadow-xl border border-slate-100">
-            <div className="flex justify-between items-start mb-6">
-              <div>
-                <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Daily Macro Averages</h3>
-                <p className="text-[9px] text-slate-700 font-bold uppercase mt-1">Based on {daysCount} day{daysCount > 1 ? 's' : ''}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <div className="w-1/2 h-40">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={macroData} innerRadius={45} outerRadius={60} paddingAngle={8} dataKey="avg">
-                      {macroData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-
-              <div className="w-1/2 space-y-5">
-                {macroData.map((m) => (
-                  <div key={m.name}>
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-[10px] font-black text-slate-900 uppercase">{m.name}</span>
-                      <span className="text-[10px] font-black text-black">{Math.round(m.avg)} / {Math.round(m.target)}g</span>
-                    </div>
-                    <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden relative">
-                      <div
-                        className="h-full transition-all duration-1000 rounded-full"
-                        style={{
-                          width: `${Math.min((m.avg / (m.target || 1)) * 100, 100)}%`,
-                          backgroundColor: m.color
-                        }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </>
-      )}
+      <ResponsiveContainer width="100%" height={180}>
+        <BarChart data={weekData}>
+          <CartesianGrid stroke="#3f3f46" strokeDasharray="3 3" />
+          <XAxis
+            dataKey="label"
+            tick={{ fill: '#a1a1aa', fontSize: 11 }}
+            axisLine={false}
+            tickLine={false}
+          />
+          <YAxis
+            tick={{ fill: '#a1a1aa', fontSize: 11 }}
+            axisLine={false}
+            tickLine={false}
+          />
+          <Tooltip content={<WeeklyTooltip />} />
+          {isCalories && dailyCalorieTarget && (
+            <ReferenceLine y={dailyCalorieTarget} stroke="#a1a1aa" strokeDasharray="4 4" />
+          )}
+          <Bar dataKey={activeTab} fill={barColor} radius={[4, 4, 0, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
     </div>
   );
 }
