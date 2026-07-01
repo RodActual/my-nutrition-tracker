@@ -30,7 +30,7 @@ function sumLogs(logs) {
 }
 
 export default function Dashboard() {
-  const today = new Date().toISOString().split('T')[0];
+  const [today] = useState(() => new Date().toISOString().split('T')[0]);
   const [selectedDate, setSelectedDate] = useState(today);
   const [userData, setUserData] = useState(null);
   const [todaysLogs, setTodaysLogs] = useState([]);
@@ -54,7 +54,8 @@ export default function Dashboard() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  const logFood = (product, existingLogId = null) => {
+  const logFood = useCallback(async (product, editingEntry = null) => {
+    const existingLogId = editingEntry?.id ?? null;
     const getNutrient = (keyStub) => {
       const val = product.nutriments?.[`${keyStub}_serving`] ||
         product.nutriments?.[`${keyStub}_100g`] ||
@@ -85,19 +86,16 @@ export default function Dashboard() {
       vitD: parseFloat(getNutrient('vitamin-d') || getNutrient('vitD')) || 0,
       vitB12: parseFloat(getNutrient('vitamin-b12') || getNutrient('vitB12')) || 0,
       date: selectedDate,
-      timestamp: editingLog?.timestamp || new Date().toISOString(),
+      timestamp: editingEntry?.timestamp || new Date().toISOString(),
     };
 
     if (existingLogId && existingLogId !== 'new-scan') {
       storage.updateLog(existingLogId, foodEntry);
     } else {
       storage.addLog(foodEntry);
-      if (foodEntry.name) {
-        storage.setProduct(foodEntry.name.toLowerCase().trim(), {
-          product_name: foodEntry.name,
-          brands: foodEntry.brand,
-          nutriments: product.nutriments || product,
-        });
+      const productName = foodEntry.name?.toLowerCase().trim();
+      if (productName && productName !== 'unknown item') {
+        storage.setProduct(productName, { ...foodEntry });
       }
     }
 
@@ -105,13 +103,12 @@ export default function Dashboard() {
     setIsManualEntryOpen(false);
     setCurrentTab('home');
     loadData();
-  };
+  }, [selectedDate, loadData]);
 
   const handleDelete = (logId) => {
-    if (confirm('Remove this item?')) {
-      storage.deleteLog(logId);
-      loadData();
-    }
+    if (typeof window === 'undefined' || !window.confirm('Delete this entry?')) return;
+    storage.deleteLog(logId);
+    loadData();
   };
 
   const handleManualEntryClose = () => {
@@ -187,6 +184,7 @@ export default function Dashboard() {
                 ].map(({ label, val }) => (
                   <div key={label} className={`flex flex-col items-center p-2 rounded-xl ${val > 0 ? 'bg-amber-500/10 border border-amber-500/20' : 'opacity-20'}`}>
                     <span className={`text-[10px] font-bold ${val > 0 ? 'text-amber-400' : 'text-zinc-500'}`}>Vit {label}</span>
+                    <span className={`text-xs font-black ${val > 0 ? 'text-amber-300' : 'text-zinc-600'}`}>{Math.round(val)}</span>
                   </div>
                 ))}
               </div>
@@ -295,7 +293,7 @@ export default function Dashboard() {
       {isManualEntryOpen && (
         <ManualEntry
           initialData={editingLog}
-          onAdd={(data, id) => logFood(data, id)}
+          onAdd={(entry) => logFood(entry, editingLog)}
           onClose={handleManualEntryClose}
         />
       )}
