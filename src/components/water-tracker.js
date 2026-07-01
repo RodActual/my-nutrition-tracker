@@ -1,116 +1,105 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { db } from '@/lib/firebase';
-import { collection, query, where, onSnapshot, addDoc, serverTimestamp, doc, deleteDoc } from 'firebase/firestore';
+import { useState, useEffect } from 'react';
+import { Droplets, Trash2 } from 'lucide-react';
+import { storage } from '@/lib/storage';
 
-export default function WaterTracker({ userId, date, waterGoal }) {
-  const [total, setTotal] = useState(0);
-  const goal = waterGoal ?? 64;
-  const [lastEntryId, setLastEntryId] = useState(null);
-  const [showUndo, setShowUndo] = useState(false);
-  const undoTimerRef = useRef(null);
+export default function WaterTracker({ date, waterGoal = 64 }) {
+  const [waterLogs, setWaterLogs] = useState([]);
+  const [customAmount, setCustomAmount] = useState('');
 
   useEffect(() => {
-    const waterRef = collection(db, "users", userId, "waterLogs");
-    const q = query(waterRef, where("date", "==", date));
+    const logs = storage.getWaterLogs(date);
+    setWaterLogs(logs);
+  }, [date]);
 
-    const unsubWater = onSnapshot(q, (snapshot) => {
-      let dailyTotal = 0;
-      snapshot.forEach((doc) => {
-        dailyTotal += doc.data().amount || 0;
-      });
-      setTotal(dailyTotal);
-    }, (error) => {
-      console.error("Firestore water logs error:", error);
-    });
+  const consumed = waterLogs.reduce((sum, log) => sum + (log.amount || 0), 0);
+  const progress = Math.min((consumed / waterGoal) * 100, 100);
 
-    return () => {
-      unsubWater();
-      if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
-    };
-  }, [userId, date]);
-
-  const addWater = async (amount) => {
-    try {
-      const docRef = await addDoc(collection(db, "users", userId, "waterLogs"), {
-        amount,
-        date,
-        timestamp: serverTimestamp()
-      });
-      // FIX #11: Store the new entry's ID and show an undo button for 5 seconds.
-      setLastEntryId(docRef.id);
-      setShowUndo(true);
-      if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
-      undoTimerRef.current = setTimeout(() => {
-        setShowUndo(false);
-        setLastEntryId(null);
-      }, 5000);
-    } catch (err) {
-      console.error("Water log failed:", err);
-    }
+  const addWater = (amount) => {
+    storage.addWaterLog({ amount, date });
+    setWaterLogs(storage.getWaterLogs(date));
   };
 
-  const undoLastEntry = async () => {
-    if (!lastEntryId) return;
-    try {
-      await deleteDoc(doc(db, "users", userId, "waterLogs", lastEntryId));
-      setShowUndo(false);
-      setLastEntryId(null);
-      if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
-    } catch (err) {
-      console.error("Undo failed:", err);
-    }
+  const handleCustomAdd = () => {
+    const amount = parseFloat(customAmount);
+    if (!amount || amount <= 0) return;
+    addWater(amount);
+    setCustomAmount('');
   };
 
-  const progress = Math.min((total / goal) * 100, 100);
+  const handleDelete = (id) => {
+    storage.deleteWaterLog(id);
+    setWaterLogs(storage.getWaterLogs(date));
+  };
 
   return (
-    <div className="bg-white p-6 rounded-[2rem] shadow-xl border border-black/5">
-      <div className="flex justify-between items-end mb-6">
-        <div>
-          <h3 className="text-xs font-black text-black uppercase tracking-widest mb-1">Hydration</h3>
-          <p className="text-3xl font-black text-black leading-none">
-            {total}<span className="text-sm ml-1 text-black font-bold uppercase">oz</span>
-          </p>
-        </div>
-        <div className="text-right">
-          <p className="text-[10px] font-black text-black uppercase tracking-tighter">Daily Goal: {goal}oz</p>
-        </div>
+    <div className="bg-zinc-900 rounded-3xl border border-zinc-800 p-5">
+      {/* Header */}
+      <div className="flex items-center gap-2 mb-4">
+        <Droplets className="text-blue-400 w-5 h-5" />
+        <span className="text-slate-200 font-semibold">Water</span>
       </div>
 
-      <div className="h-5 bg-slate-100 rounded-2xl overflow-hidden mb-8 border border-black/10 shadow-inner">
+      {/* Progress display */}
+      <div className="mb-2">
+        <span className="text-slate-300 text-sm">{consumed} / {waterGoal} oz</span>
+      </div>
+      <div className="bg-zinc-800 rounded-full h-2 mb-5">
         <div
-          className="h-full bg-black transition-all duration-1000 ease-out relative"
+          className="bg-blue-400 rounded-full h-2 transition-all duration-500"
           style={{ width: `${progress}%` }}
-        >
-          {progress > 15 && <div className="absolute inset-0 bg-white/20 animate-pulse" />}
-        </div>
+        />
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
-        {[8, 16, 24].map((amount) => (
+      {/* Quick-add buttons */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        {[8, 12, 16, 24].map((amount) => (
           <button
             key={amount}
             onClick={() => addWater(amount)}
-            className="group flex flex-col items-center py-3 bg-slate-50 hover:bg-black hover:text-white rounded-2xl transition-all active:scale-90 border border-black/5"
+            className="bg-zinc-800 hover:bg-zinc-700 text-slate-200 text-sm rounded-xl px-3 py-2 transition-colors"
           >
-            <span className="text-lg mb-0.5">{amount === 8 ? '🥛' : amount === 16 ? '🥤' : '🍶'}</span>
-            <span className="text-[10px] font-black text-black group-hover:text-white uppercase">{amount}oz</span>
+            +{amount} oz
           </button>
         ))}
       </div>
 
-      {/* FIX #11: Undo button appears for 5 seconds after any water entry */}
-      {showUndo && (
-        <div className="mt-4 animate-in fade-in slide-in-from-bottom-2 duration-200">
-          <button
-            onClick={undoLastEntry}
-            className="w-full py-3 bg-slate-100 hover:bg-red-50 border border-slate-200 hover:border-red-200 rounded-2xl text-xs font-black text-slate-900 hover:text-red-600 uppercase tracking-widest transition-all active:scale-95"
-          >
-            ↩ Undo Last Entry
-          </button>
-        </div>
+      {/* Custom amount */}
+      <div className="flex gap-2 mb-4">
+        <input
+          type="number"
+          min="1"
+          value={customAmount}
+          onChange={(e) => setCustomAmount(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleCustomAdd()}
+          placeholder="oz"
+          className="bg-zinc-800 hover:bg-zinc-700 text-slate-200 text-sm rounded-xl px-3 py-2 w-20 outline-none focus:ring-1 focus:ring-blue-400 transition-colors"
+        />
+        <button
+          onClick={handleCustomAdd}
+          className="bg-blue-500 hover:bg-blue-400 text-white rounded-xl px-4 py-2 text-sm transition-colors"
+        >
+          Add
+        </button>
+      </div>
+
+      {/* Log list */}
+      {waterLogs.length > 0 && (
+        <ul className="space-y-1">
+          {waterLogs.map((log) => (
+            <li key={log.id} className="flex items-center justify-between">
+              <span className="text-zinc-400 text-xs">{log.amount} oz</span>
+              <button
+                onClick={() => handleDelete(log.id)}
+                className="text-zinc-500 hover:text-rose-400 transition-colors p-1"
+                aria-label="Delete entry"
+              >
+                <Trash2 className="w-3 h-3" />
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
