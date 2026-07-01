@@ -17,7 +17,11 @@ function read(key, fallback) {
 
 function write(key, value) {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(key, JSON.stringify(value));
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    console.warn('localStorage write failed (quota exceeded?)');
+  }
 }
 
 function uid() {
@@ -73,6 +77,7 @@ export const storage = {
     const all = read(KEYS.weights, []);
     const entry = { weight, date, id: uid(), timestamp: new Date().toISOString() };
     write(KEYS.weights, [...all, entry].sort((a, b) => a.date.localeCompare(b.date)));
+    return entry;
   },
 
   // Product history (replaces Firestore products collection)
