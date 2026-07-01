@@ -139,7 +139,7 @@ export default function LabelScanner({ onResult, onClose }) {
         {isProcessing ? (
           <div className="w-full bg-white/5 h-14 rounded-2xl flex items-center justify-center overflow-hidden relative border border-white/10">
             <div 
-              className="absolute inset-y-0 left-0 bg-blue-600 transition-all duration-300" 
+              className="absolute inset-y-0 left-0 bg-emerald-500 transition-all duration-300"
               style={{ width: `${progress}%` }} 
             />
             <span className="relative font-black text-white text-[10px] uppercase tracking-[0.2em]">
