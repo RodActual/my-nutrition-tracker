@@ -1,179 +1,211 @@
 'use client';
 
-import { useState } from 'react';
-import { db } from '@/lib/firebase';
-import { doc, setDoc, collection, addDoc } from 'firebase/firestore';
-import { calculateTargets, lbsToKg, ftInToCm } from '@/lib/nutrition';
+import { useState, useEffect } from 'react';
+import { X } from 'lucide-react';
+import { storage } from '@/lib/storage';
 
-export default function SettingsModal({ userId, currentProfile, onClose }) {
-  // Ensure every single field has a hardcoded fallback to prevent "undefined" errors
-  const [formData, setFormData] = useState({
-    weight: currentProfile?.weight || '',
-    heightFt: currentProfile?.heightFt || '',
-    heightIn: currentProfile?.heightIn || '',
-    age: currentProfile?.age || '',
-    goal: currentProfile?.goal || 'maintain',
-    gender: currentProfile?.gender || 'female', // Default to female for Madison
-    activityLevel: currentProfile?.activityLevel || 1.2
-  });
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState(null);
+export default function SettingsModal({ currentProfile, onClose }) {
+  const [name, setName] = useState(currentProfile?.name ?? '');
+  const [age, setAge] = useState(currentProfile?.age ?? '');
+  const [weight, setWeight] = useState(currentProfile?.weight ?? '');
+  const [height, setHeight] = useState(currentProfile?.height ?? '');
+  const [goalWeight, setGoalWeight] = useState(currentProfile?.goalWeight ?? '');
+  const [activityLevel, setActivityLevel] = useState(currentProfile?.activityLevel ?? 'sedentary');
 
-  const handleUpdate = async (e) => {
-    e.preventDefault();
-    setSaving(true);
-    setError(null);
+  const [calories, setCalories] = useState('');
+  const [protein, setProtein] = useState('');
+  const [carbs, setCarbs] = useState('');
+  const [fat, setFat] = useState('');
+  const [water, setWater] = useState(currentProfile?.waterGoalOz ?? '');
 
-    try {
-      // 1. Validation check for all numbers
-      const weightLbs = parseFloat(formData.weight);
-      const age = parseInt(formData.age);
-      const hFt = parseInt(formData.heightFt);
-      const hIn = parseInt(formData.heightIn);
-
-      if (!weightLbs || !age || isNaN(hFt) || isNaN(hIn)) {
-        throw new Error("Missing numeric fields");
-      }
-
-      const weightKg = lbsToKg(weightLbs);
-      const heightCm = ftInToCm(hFt, hIn);
-      
-      // 2. Calculation (This is where it usually fails if a field is missing)
-      const newTargets = calculateTargets(
-        weightKg, 
-        heightCm, 
-        age, 
-        formData.gender, 
-        parseFloat(formData.activityLevel), 
-        formData.goal
-      );
-
-      const waterGoalOz = Math.round(weightLbs * 0.6);
-
-      // 3. Firestore Update
-      const userRef = doc(db, "users", userId);
-      await setDoc(userRef, {
-        profile: {
-          ...formData,
-          weightKg,
-          heightCm,
-          waterGoalOz,
-          lastUpdated: new Date().toISOString()
-        },
-        targets: newTargets
-      }, { merge: true });
-
-      // 4. Weight Tracking Log — only when weight actually changes
-      if (!currentProfile?.weight || parseFloat(currentProfile.weight) !== weightLbs) {
-        await addDoc(collection(db, "users", userId, "weightLogs"), {
-          weight: weightLbs,
-          date: new Date().toISOString().split('T')[0],
-          timestamp: new Date().toISOString()
-        });
-      }
-
-      onClose();
-    } catch (err) {
-      console.error("Update failed:", err);
-      if (err.message === 'Missing numeric fields') {
-        setError('Please fill in all fields with valid numbers.');
-      } else if (err.code === 'permission-denied') {
-        setError('Permission denied — check your Firestore security rules in the Firebase console.');
-      } else if (err.code === 'unavailable' || err.code === 'network-request-failed') {
-        setError('Network error — check your connection and try again.');
-      } else {
-        setError(`Save failed: ${err.message}`);
-      }
-    } finally {
-      setSaving(false);
+  useEffect(() => {
+    const t = storage.getTargets();
+    if (t) {
+      setCalories(t.calories ?? '');
+      setProtein(t.protein ?? '');
+      setCarbs(t.carbs ?? '');
+      setFat(t.fat ?? '');
+      setWater(t.water ?? t.waterGoal ?? '');
     }
+  }, []);
+
+  const handleSave = () => {
+    if (!calories || isNaN(Number(calories)) || Number(calories) <= 0) {
+      alert('Please enter a valid daily calorie target.');
+      return;
+    }
+
+    const parsedAge = age === '' ? null : Number(age);
+    const parsedWeight = weight === '' ? null : Number(weight);
+    const parsedHeight = height === '' ? null : Number(height);
+    const parsedGoalWeight = goalWeight === '' ? null : Number(goalWeight);
+    const parsedWater = water === '' ? null : Number(water);
+    const parsedCalories = calories === '' ? null : Number(calories);
+    const parsedProtein = protein === '' ? null : Number(protein);
+    const parsedCarbs = carbs === '' ? null : Number(carbs);
+    const parsedFat = fat === '' ? null : Number(fat);
+
+    storage.setProfile({
+      name,
+      age: parsedAge,
+      weight: parsedWeight,
+      height: parsedHeight,
+      goalWeight: parsedGoalWeight,
+      activityLevel,
+      waterGoalOz: parsedWater,
+    });
+    storage.setTargets({
+      calories: parsedCalories,
+      protein: parsedProtein,
+      carbs: parsedCarbs,
+      fat: parsedFat,
+      water: parsedWater,
+    });
+    if (currentProfile?.weight != null && parsedWeight != null && Number(currentProfile.weight) !== parsedWeight) {
+      storage.addWeightLog({ weight: parsedWeight, date: new Date().toISOString().split('T')[0] });
+    }
+    onClose();
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl relative overflow-y-auto max-h-[90vh]">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-black text-black uppercase tracking-tight">Settings</h2>
-          <button onClick={onClose} className="p-2 bg-slate-100 rounded-full text-black">✕</button>
+    <div className="fixed inset-0 bg-black/70 flex items-end justify-center z-50">
+      <div className="bg-zinc-900 rounded-t-3xl w-full max-w-lg p-6 pb-10 overflow-y-auto max-h-[85vh]">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-lg font-semibold text-slate-100">Settings</h2>
+          <button onClick={onClose} className="text-zinc-400 hover:text-slate-100">
+            <X size={20} />
+          </button>
         </div>
 
-        <form onSubmit={handleUpdate} className="space-y-5">
-          {/* Gender Selection - Often the missing field */}
-          <div className="flex gap-4 p-1 bg-slate-100 rounded-2xl">
-            {['male', 'female'].map((g) => (
-              <button
-                key={g}
-                type="button"
-                onClick={() => setFormData({...formData, gender: g})}
-                className={`flex-1 py-3 rounded-xl font-black uppercase text-[10px] transition-all ${
-                  formData.gender === g ? 'bg-black text-white' : 'text-black opacity-40'
-                }`}
-              >
-                {g}
-              </button>
-            ))}
-          </div>
+        <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-3 mt-5">Profile</p>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-[10px] font-black text-black uppercase mb-1 ml-1">Weight (lbs)</label>
-              <input type="number" required className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-black" value={formData.weight} onChange={e => setFormData({...formData, weight: e.target.value})} />
-            </div>
-            <div>
-              <label className="block text-[10px] font-black text-black uppercase mb-1 ml-1">Age</label>
-              <input type="number" required className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-black" value={formData.age} onChange={e => setFormData({...formData, age: e.target.value})} />
-            </div>
-          </div>
-
+        <div className="space-y-3">
           <div>
-            <label className="block text-[10px] font-black text-black uppercase mb-1 ml-1">Height</label>
-            <div className="flex gap-2">
-              <input type="number" placeholder="Ft" required className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-black" value={formData.heightFt} onChange={e => setFormData({...formData, heightFt: e.target.value})} />
-              <input type="number" placeholder="In" required className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-black" value={formData.heightIn} onChange={e => setFormData({...formData, heightIn: e.target.value})} />
-            </div>
+            <label className="block text-xs text-zinc-400 mb-1">Name</label>
+            <input
+              type="text"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
+            />
           </div>
-
           <div>
-            <label className="block text-[10px] font-black text-black uppercase mb-1 ml-1">Activity Level</label>
-            <select 
-              className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-black outline-none"
-              value={formData.activityLevel}
-              onChange={e => setFormData({...formData, activityLevel: e.target.value})}
+            <label className="block text-xs text-zinc-400 mb-1">Age</label>
+            <input
+              type="number"
+              min="0"
+              value={age}
+              onChange={e => setAge(e.target.value)}
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-zinc-400 mb-1">Weight (lbs)</label>
+            <input
+              type="number"
+              min="0"
+              value={weight}
+              onChange={e => setWeight(e.target.value)}
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-zinc-400 mb-1">Height (inches)</label>
+            <input
+              type="number"
+              min="0"
+              value={height}
+              onChange={e => setHeight(e.target.value)}
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-zinc-400 mb-1">Goal Weight (lbs)</label>
+            <input
+              type="number"
+              min="0"
+              value={goalWeight}
+              onChange={e => setGoalWeight(e.target.value)}
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-zinc-400 mb-1">Activity Level</label>
+            <select
+              value={activityLevel}
+              onChange={e => setActivityLevel(e.target.value)}
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
             >
-              <option value={1.2}>Sedentary (Office job)</option>
-              <option value={1.375}>Lightly Active (1-2 days/week)</option>
-              <option value={1.55}>Moderately Active (3-5 days/week)</option>
-              <option value={1.725}>Very Active (6-7 days/week)</option>
+              <option value="sedentary">Sedentary</option>
+              <option value="light">Light</option>
+              <option value="moderate">Moderate</option>
+              <option value="active">Active</option>
+              <option value="very_active">Very Active</option>
             </select>
           </div>
+        </div>
 
+        <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-3 mt-5">Daily Targets</p>
+
+        <div className="space-y-3">
           <div>
-            <label className="block text-[10px] font-black text-black uppercase mb-1 ml-1">Goal</label>
-            <select 
-              className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-black outline-none"
-              value={formData.goal}
-              onChange={e => setFormData({...formData, goal: e.target.value})}
-            >
-              <option value="lose">Weight Loss</option>
-              <option value="maintain">Maintenance</option>
-              <option value="gain">Muscle Gain</option>
-            </select>
+            <label className="block text-xs text-zinc-400 mb-1">Calories</label>
+            <input
+              type="number"
+              min="0"
+              value={calories}
+              onChange={e => setCalories(e.target.value)}
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
+            />
           </div>
+          <div>
+            <label className="block text-xs text-zinc-400 mb-1">Protein (g)</label>
+            <input
+              type="number"
+              min="0"
+              value={protein}
+              onChange={e => setProtein(e.target.value)}
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-zinc-400 mb-1">Carbs (g)</label>
+            <input
+              type="number"
+              min="0"
+              value={carbs}
+              onChange={e => setCarbs(e.target.value)}
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-zinc-400 mb-1">Fat (g)</label>
+            <input
+              type="number"
+              min="0"
+              value={fat}
+              onChange={e => setFat(e.target.value)}
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-zinc-400 mb-1">Water (oz)</label>
+            <input
+              type="number"
+              min="0"
+              value={water}
+              onChange={e => setWater(e.target.value)}
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+        </div>
 
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3">
-              <p className="text-red-700 text-xs font-bold">{error}</p>
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={saving}
-            className="w-full bg-black py-5 rounded-3xl text-white font-black uppercase tracking-widest active:scale-95 transition-all disabled:opacity-50"
-          >
-            {saving ? 'Saving...' : 'Update Settings'}
-          </button>
-        </form>
+        <button
+          onClick={handleSave}
+          className="w-full bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-semibold rounded-2xl py-3 mt-6"
+        >
+          Save
+        </button>
       </div>
     </div>
   );

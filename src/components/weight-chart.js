@@ -1,69 +1,51 @@
 'use client';
-
 import { useState, useEffect } from 'react';
-import { db } from '@/lib/firebase';
-import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { storage } from '@/lib/storage';
 
-export default function WeightChart({ userId }) {
+function formatDate(dateStr) {
+  const d = new Date(dateStr + 'T12:00:00');
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function CustomTooltip({ active, payload }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm">
+      <p className="text-slate-100 font-medium">{payload[0].value} lbs</p>
+      <p className="text-zinc-400">{payload[0].payload.label}</p>
+    </div>
+  );
+}
+
+export default function WeightChart() {
   const [data, setData] = useState([]);
 
   useEffect(() => {
-    const weightRef = collection(db, "users", userId, "weightLogs");
-    const q = query(weightRef, orderBy("date", "asc"), limit(30));
+    const logs = storage.getWeightLogs()
+      .slice()
+      .sort((a, b) => a.date.localeCompare(b.date));
+    setData(logs.map(l => ({ ...l, label: formatDate(l.date) })));
+  }, []);
 
-    const unsub = onSnapshot(q, (snapshot) => {
-      const logs = snapshot.docs.map(doc => ({
-        date: new Date(doc.data().date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
-        weight: doc.data().weight
-      }));
-      setData(logs);
-    }, (error) => {
-      console.error("Firestore weight chart error:", error);
-    });
-
-    return () => unsub();
-  }, [userId]);
-
-  if (data.length < 2) return (
-    <div className="bg-white p-6 rounded-3xl border border-slate-100 text-center py-12">
-      <p className="text-slate-400 font-bold text-sm uppercase tracking-widest">Add more weight entries to see progress</p>
+  if (!data.length) return (
+    <div className="bg-zinc-900 rounded-3xl border border-zinc-800 p-5">
+      <p className="text-zinc-500 text-sm text-center py-8">No weight data yet</p>
     </div>
   );
 
   return (
-    <div className="bg-white p-6 rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-50">
-      <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6">Weight Trend (LBS)</h3>
-      <div className="h-64 w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-            <XAxis 
-              dataKey="date" 
-              axisLine={false} 
-              tickLine={false} 
-              tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 'bold'}} 
-              dy={10}
-            />
-            <YAxis 
-              domain={['dataMin - 5', 'dataMax + 5']} 
-              hide 
-            />
-            <Tooltip 
-              contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
-              labelStyle={{ fontWeight: 'bold', color: '#64748b' }}
-            />
-            <Line 
-              type="monotone" 
-              dataKey="weight" 
-              stroke="#2563eb" 
-              strokeWidth={4} 
-              dot={{ r: 6, fill: '#2563eb', strokeWidth: 2, stroke: '#fff' }} 
-              activeDot={{ r: 8, strokeWidth: 0 }}
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
+    <div className="bg-zinc-900 rounded-3xl border border-zinc-800 p-5">
+      <p className="text-sm font-semibold text-slate-100 mb-4">Weight</p>
+      <ResponsiveContainer width="100%" height={200}>
+        <LineChart data={data}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" />
+          <XAxis dataKey="label" tick={{ fill: '#a1a1aa', fontSize: 11 }} />
+          <YAxis tick={{ fill: '#a1a1aa', fontSize: 11 }} domain={([min, max]) => min === max ? [min - 5, max + 5] : ['auto', 'auto']} />
+          <Tooltip content={<CustomTooltip />} />
+          <Line type="monotone" dataKey="weight" stroke="#10b981" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: '#10b981' }} />
+        </LineChart>
+      </ResponsiveContainer>
     </div>
   );
 }

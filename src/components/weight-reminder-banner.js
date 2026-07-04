@@ -1,36 +1,31 @@
 'use client';
+import { useState, useEffect } from 'react';
+import { Scale } from 'lucide-react';
+import { storage } from '@/lib/storage';
 
-// FIX #9: Replaced the <Link href="/onboarding"> with an onOpenSettings callback.
-// The old implementation navigated away to a separate page, losing the user's
-// current day view. Now the banner triggers the in-app SettingsModal directly.
-export default function WeightReminderBanner({ lastUpdated, onOpenSettings }) {
-  if (!lastUpdated) return null;
+export default function WeightReminderBanner({ onLogWeight }) {
+  const [show, setShow] = useState(false);
 
-  const lastDate = new Date(lastUpdated);
-  const today = new Date();
+  useEffect(() => {
+    const logs = storage.getWeightLogs();
+    const today = new Date().toISOString().split('T')[0];
+    const loggedToday = logs.some(l => l.date === today);
+    setShow(!loggedToday);
+  }, []);
 
-  const diffTime = Math.abs(today - lastDate);
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-  if (diffDays <= 7) return null;
+  if (!show) return null;
 
   return (
-    <div className="bg-amber-50 border-b border-amber-100 p-4 animate-in fade-in slide-in-from-top duration-500">
-      <div className="max-w-md mx-auto flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">⚖️</span>
-          <div>
-            <p className="text-sm font-bold text-amber-900">Time to check-in!</p>
-            <p className="text-xs text-amber-700">It&apos;s been {diffDays} days since your last weigh-in.</p>
-          </div>
-        </div>
-        <button
-          onClick={onOpenSettings}
-          className="bg-amber-600 text-white text-xs font-bold px-4 py-2 rounded-lg active:scale-95 transition shadow-sm"
-        >
-          Update
-        </button>
-      </div>
+    <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl px-4 py-3 flex items-center gap-3">
+      <Scale size={18} className="text-amber-400" aria-hidden="true" />
+      <p className="text-sm text-amber-200 flex-1">Log your weight today to track progress</p>
+      <button
+        type="button"
+        className="text-xs font-semibold text-amber-400 hover:text-amber-300"
+        onClick={() => { setShow(false); onLogWeight?.(); }}
+      >
+        Log now
+      </button>
     </div>
   );
 }

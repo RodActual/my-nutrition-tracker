@@ -1,22 +1,22 @@
 import './globals.css';
 
 export const metadata = {
-  title: 'Family Nutrition Tracker',
+  title: 'NutriTrack',
   description: 'Track calories and macros easily.',
-  manifest: '/manifest.json', // Link the manifest here
+  manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'default',
+    statusBarStyle: 'black-translucent',
     title: 'NutriTrack',
   },
 };
 
 export const viewport = {
-  themeColor: '#2563eb',
+  themeColor: '#09090b',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
-  userScalable: false, // Prevents accidental zooming on input fields
+  userScalable: false,
 };
 
 export default function RootLayout({ children }) {
