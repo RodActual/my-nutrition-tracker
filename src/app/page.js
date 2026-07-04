@@ -2,11 +2,54 @@
 
 import { useState, useEffect } from 'react';
 import Dashboard from '@/components/dashboard';
+import { storage } from '@/lib/storage';
+
+async function syncHealthData() {
+  try {
+    const res = await fetch('/api/health-sync');
+    if (!res.ok) return;
+    const records = await res.json(); // { "2026-07-04": { weight, steps, ... }, ... }
+
+    for (const entry of Object.values(records)) {
+      if (!entry?.date) continue;
+
+      // Merge weight log if present and not already logged that day
+      if (entry.weight) {
+        const existing = storage.getWeightLogs();
+        const alreadyLogged = existing.some(l => l.date === entry.date);
+        if (!alreadyLogged) {
+          storage.addWeightLog({ weight: entry.weight, date: entry.date });
+        }
+      }
+
+      // Merge active calories as a log entry if present and not already synced
+      if (entry.activeCalories) {
+        const dayLogs = storage.getLogs(entry.date);
+        const alreadySynced = dayLogs.some(l => l.source === 'AppleHealth' && l.date === entry.date);
+        if (!alreadySynced) {
+          storage.addLog({
+            name: 'Active Calories Burned',
+            calories: -Math.round(entry.activeCalories), // negative = burned
+            protein: 0, carbs: 0, fat: 0,
+            fiber: 0, sodium: 0, sugar: 0,
+            source: 'AppleHealth',
+            date: entry.date,
+            timestamp: new Date(entry.date + 'T12:00:00').getTime(),
+          });
+        }
+      }
+    }
+  } catch {
+    // Sync failure is silent — app works fine without it
+  }
+}
 
 export default function Home() {
   const [ready, setReady] = useState(false);
 
-  useEffect(() => { setReady(true); }, []);
+  useEffect(() => {
+    syncHealthData().finally(() => setReady(true));
+  }, []);
 
   if (!ready) {
     return (
