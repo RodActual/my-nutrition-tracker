@@ -37,9 +37,6 @@ yarn-error.log*
 # vercel
 .vercel
 
-# health sync data
-/data/
-
 # typescript
 *.tsbuildinfo
 next-env.d.ts
