@@ -1,15 +1,23 @@
 import { NextResponse } from 'next/server';
-import { kv } from '@vercel/kv';
+import { Redis } from '@upstash/redis';
 
 const KEY = 'health_sync';
 
+function getRedis() {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) return null;
+  return new Redis({ url, token });
+}
+
 // GET — client fetches on load to merge into localStorage
 export async function GET() {
+  const redis = getRedis();
+  if (!redis) return NextResponse.json({});
   try {
-    const records = (await kv.get(KEY)) ?? {};
+    const records = (await redis.get(KEY)) ?? {};
     return NextResponse.json(records);
   } catch {
-    // KV not configured (local dev) — return empty
     return NextResponse.json({});
   }
 }
@@ -29,8 +37,11 @@ export async function POST(req) {
     return NextResponse.json({ error: 'date required (YYYY-MM-DD)' }, { status: 400 });
   }
 
+  const redis = getRedis();
+  if (!redis) return NextResponse.json({ error: 'Redis not configured' }, { status: 503 });
+
   try {
-    const records = (await kv.get(KEY)) ?? {};
+    const records = (await redis.get(KEY)) ?? {};
     records[date] = {
       ...(records[date] ?? {}),
       date,
@@ -40,9 +51,9 @@ export async function POST(req) {
       ...(restingCalories != null && { restingCalories: Number(restingCalories) }),
       syncedAt: new Date().toISOString(),
     };
-    await kv.set(KEY, records);
+    await redis.set(KEY, records);
     return NextResponse.json({ ok: true, date, data: records[date] });
   } catch {
-    return NextResponse.json({ error: 'KV unavailable' }, { status: 503 });
+    return NextResponse.json({ error: 'Redis write failed' }, { status: 503 });
   }
 }
