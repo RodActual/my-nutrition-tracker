@@ -73,7 +73,7 @@ export default function QuickLog({ onAdd = () => {} }) {
       fiber: item.fiber,
       sodium: item.sodium,
       sugar: item.sugar,
-      timestamp: Date.now(),
+      timestamp: new Date().toISOString(),
       source: 'Quick',
     });
   };

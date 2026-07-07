@@ -47,7 +47,9 @@ export default function Dashboard() {
     const targets = storage.getTargets();
     if (!profile || !targets) setIsSettingsOpen(true);
     setUserData({ profile, targets });
-    const logs = storage.getLogs(selectedDate).sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+    const logs = storage.getLogs(selectedDate).sort(
+      (a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0)
+    );
     setTodaysLogs(logs);
     setDailyTotals(sumLogs(logs));
   }, [selectedDate]);

@@ -34,7 +34,7 @@ async function syncHealthData() {
             fiber: 0, sodium: 0, sugar: 0,
             source: 'AppleHealth',
             date: entry.date,
-            timestamp: new Date(entry.date + 'T12:00:00').getTime(),
+            timestamp: new Date(entry.date + 'T12:00:00').toISOString(),
           });
         }
       }
