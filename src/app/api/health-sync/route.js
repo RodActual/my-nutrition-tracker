@@ -22,8 +22,23 @@ export async function GET() {
   }
 }
 
+function mergeRecord(records, { date, weight, steps, activeCalories, restingCalories }) {
+  if (!date) return false;
+  records[date] = {
+    ...(records[date] ?? {}),
+    date,
+    ...(weight != null && { weight: Number(weight) }),
+    ...(steps != null && { steps: Number(steps) }),
+    ...(activeCalories != null && { activeCalories: Number(activeCalories) }),
+    ...(restingCalories != null && { restingCalories: Number(restingCalories) }),
+    syncedAt: new Date().toISOString(),
+  };
+  return true;
+}
+
 // POST — called by the Apple Shortcut
 // Body: { date, weight?, steps?, activeCalories?, restingCalories? }
+//   or an array of those objects for historical backfill
 export async function POST(req) {
   let body;
   try {
@@ -32,8 +47,8 @@ export async function POST(req) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const { date, weight, steps, activeCalories, restingCalories } = body;
-  if (!date) {
+  const items = Array.isArray(body) ? body : [body];
+  if (items.length === 0 || !items.some(i => i?.date)) {
     return NextResponse.json({ error: 'date required (YYYY-MM-DD)' }, { status: 400 });
   }
 
@@ -42,17 +57,12 @@ export async function POST(req) {
 
   try {
     const records = (await redis.get(KEY)) ?? {};
-    records[date] = {
-      ...(records[date] ?? {}),
-      date,
-      ...(weight != null && { weight: Number(weight) }),
-      ...(steps != null && { steps: Number(steps) }),
-      ...(activeCalories != null && { activeCalories: Number(activeCalories) }),
-      ...(restingCalories != null && { restingCalories: Number(restingCalories) }),
-      syncedAt: new Date().toISOString(),
-    };
+    let merged = 0;
+    for (const item of items) {
+      if (item && typeof item === 'object' && mergeRecord(records, item)) merged++;
+    }
     await redis.set(KEY, records);
-    return NextResponse.json({ ok: true, date, data: records[date] });
+    return NextResponse.json({ ok: true, merged });
   } catch {
     return NextResponse.json({ error: 'Redis write failed' }, { status: 503 });
   }
