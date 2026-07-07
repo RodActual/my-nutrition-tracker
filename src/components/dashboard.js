@@ -10,8 +10,13 @@ import WeightReminderBanner from './weight-reminder-banner';
 import ManualEntry from './manual-entry';
 import LogList from './log-list';
 import SettingsModal from './settings-modal';
-import WeightChart from './weight-chart';
 import QuickLog from './quick-log';
+import TimeRangeSelector from './time-range-selector';
+import WeightTrendChart from './charts/weight-trend-chart';
+import EnergyBalanceChart from './charts/energy-balance-chart';
+import MacroTrendChart from './charts/macro-trend-chart';
+import ActivityChart from './charts/activity-chart';
+import WaterChart from './charts/water-chart';
 import WaterTracker from './water-tracker';
 import WeeklyInsights from './weekly-insights';
 
@@ -41,6 +46,7 @@ export default function Dashboard() {
   const [isManualEntryOpen, setIsManualEntryOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [editingLog, setEditingLog] = useState(null);
+  const [trendRange, setTrendRange] = useState(30);
 
   const loadData = useCallback(() => {
     const profile = storage.getProfile();
@@ -128,14 +134,11 @@ export default function Dashboard() {
 
   return (
     <main className="min-h-screen bg-zinc-950 pb-24">
-      <WeightReminderBanner
-        lastUpdated={userData?.profile?.lastUpdated}
-        onOpenSettings={() => setIsSettingsOpen(true)}
-      />
+      <WeightReminderBanner onSaved={loadData} />
 
       <header className="px-5 pt-12 pb-4 flex justify-between items-center">
         <h1 className="text-lg font-black text-slate-100">
-          {currentTab === 'home' ? 'My Day' : currentTab === 'add' ? 'Log Food' : 'Insights'}
+          {currentTab === 'home' ? 'My Day' : currentTab === 'add' ? 'Log Food' : 'Trends'}
         </h1>
         <button
           onClick={() => setIsSettingsOpen(true)}
@@ -162,6 +165,10 @@ export default function Dashboard() {
                 <ChevronRight size={20} />
               </button>
             </div>
+
+            <button onClick={() => setCurrentTab('insights')} className="w-full text-left active:scale-[0.99] transition-transform">
+              <WeightTrendChart days={30} profile={userData?.profile} compact />
+            </button>
 
             {userData?.targets && (
               <DailyProgress targets={userData.targets} current={dailyTotals} />
@@ -229,7 +236,12 @@ export default function Dashboard() {
 
         {currentTab === 'insights' && (
           <div className="space-y-4 animate-in fade-in duration-300">
-            <WeightChart />
+            <TimeRangeSelector value={trendRange} onChange={setTrendRange} />
+            <WeightTrendChart days={trendRange} profile={userData?.profile} />
+            <EnergyBalanceChart days={trendRange} profile={userData?.profile} />
+            <MacroTrendChart days={trendRange} targets={userData?.targets} />
+            <ActivityChart days={trendRange} />
+            <WaterChart days={trendRange} waterGoal={userData?.profile?.waterGoalOz} />
             <WeeklyInsights dailyCalorieTarget={userData?.targets?.calories || 2000} />
           </div>
         )}

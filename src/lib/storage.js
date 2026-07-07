@@ -40,7 +40,7 @@ function pushDayToServer(date) {
     const calories = logs.reduce((s, l) => s + (l.calories || 0), 0);
     const protein  = logs.reduce((s, l) => s + (l.protein  || 0), 0);
     const carbs    = logs.reduce((s, l) => s + (l.carbs    || 0), 0);
-    const fat      = logs.reduce((s, l) => s + (l.fat      || 0), 0);
+    const fat      = logs.reduce((s, l) => s + (l.fats || l.fat || 0), 0);
     const fiber    = logs.reduce((s, l) => s + (l.fiber    || 0), 0);
     const sodium   = logs.reduce((s, l) => s + (l.sodium   || 0), 0);
     const sugar    = logs.reduce((s, l) => s + (l.sugar    || 0), 0);

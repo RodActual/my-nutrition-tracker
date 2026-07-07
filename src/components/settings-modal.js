@@ -3,43 +3,7 @@
 import { useState, useEffect } from 'react';
 import { X, Sparkles } from 'lucide-react';
 import { storage } from '@/lib/storage';
-
-const ACTIVITY_MULTIPLIERS = {
-  sedentary: 1.2,
-  light: 1.375,
-  moderate: 1.55,
-  active: 1.725,
-  very_active: 1.9,
-};
-
-function calculateTargets({ age, weight, height, goalWeight, activityLevel }) {
-  const w = Number(weight);
-  const h = Number(height);
-  const a = Number(age);
-  const gw = Number(goalWeight) || w;
-  if (!w || !h || !a) return null;
-
-  // Mifflin-St Jeor BMR (assuming male; no sex field yet — conservative estimate)
-  const bmr = 10 * (w * 0.453592) + 6.25 * (h * 2.54) - 5 * a + 5;
-  const tdee = bmr * (ACTIVITY_MULTIPLIERS[activityLevel] ?? 1.55);
-
-  // Calorie goal: deficit if goal < current, surplus if goal > current
-  const diff = gw - w;
-  const adjustment = diff < 0 ? Math.max(diff * 11, -750) : Math.min(diff * 11, 500);
-  const goalCalories = Math.round(tdee + adjustment);
-
-  // Macros: 1g protein per lb bodyweight, 25% fat, carbs fill remainder
-  const proteinG = Math.round(w * 0.9);
-  const fatG = Math.round((goalCalories * 0.25) / 9);
-  const carbsG = Math.round((goalCalories - proteinG * 4 - fatG * 9) / 4);
-
-  return {
-    calories: goalCalories,
-    protein: proteinG,
-    carbs: Math.max(carbsG, 0),
-    fat: fatG,
-  };
-}
+import { calculateTargets } from '@/lib/trends';
 
 export default function SettingsModal({ currentProfile, onClose }) {
   const [name, setName] = useState(currentProfile?.name ?? '');
