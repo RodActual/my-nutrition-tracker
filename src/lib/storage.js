@@ -28,6 +28,35 @@ function uid() {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+// Fire-and-forget push of a day's totals to the server so Apple Shortcuts can sync to Apple Health
+function pushDayToServer(date) {
+  if (typeof window === 'undefined') return;
+  try {
+    const logs = read(KEYS.logs, []).filter(l => l.date === date && l.source !== 'AppleHealth');
+    const waterLogs = read(KEYS.water, []).filter(w => w.date === date);
+    const weightEntry = read(KEYS.weights, []).filter(w => w.date === date).at(-1);
+
+    const calories = logs.reduce((s, l) => s + (l.calories || 0), 0);
+    const protein  = logs.reduce((s, l) => s + (l.protein  || 0), 0);
+    const carbs    = logs.reduce((s, l) => s + (l.carbs    || 0), 0);
+    const fat      = logs.reduce((s, l) => s + (l.fat      || 0), 0);
+    const fiber    = logs.reduce((s, l) => s + (l.fiber    || 0), 0);
+    const sodium   = logs.reduce((s, l) => s + (l.sodium   || 0), 0);
+    const sugar    = logs.reduce((s, l) => s + (l.sugar    || 0), 0);
+    const water    = waterLogs.reduce((s, w) => s + (w.amount || 0), 0);
+
+    fetch('/api/nutrition-export', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date,
+        calories, protein, carbs, fat, fiber, sodium, sugar, water,
+        ...(weightEntry && { weight: weightEntry.weight }),
+      }),
+    }).catch(() => {});
+  } catch { /* silent */ }
+}
+
 export const storage = {
   // Profile
   getProfile: () => read(KEYS.profile, null),
@@ -46,14 +75,21 @@ export const storage = {
     const all = read(KEYS.logs, []);
     const entry = { ...log, id: uid(), timestamp: log.timestamp || new Date().toISOString() };
     write(KEYS.logs, [entry, ...all]);
+    pushDayToServer(entry.date);
     return entry;
   },
   updateLog: (id, data) => {
     const all = read(KEYS.logs, []);
-    write(KEYS.logs, all.map(l => l.id === id ? { ...l, ...data } : l));
+    const updated = all.map(l => l.id === id ? { ...l, ...data } : l);
+    write(KEYS.logs, updated);
+    const date = (updated.find(l => l.id === id) ?? data).date;
+    if (date) pushDayToServer(date);
   },
   deleteLog: (id) => {
-    write(KEYS.logs, read(KEYS.logs, []).filter(l => l.id !== id));
+    const all = read(KEYS.logs, []);
+    const entry = all.find(l => l.id === id);
+    write(KEYS.logs, all.filter(l => l.id !== id));
+    if (entry?.date) pushDayToServer(entry.date);
   },
 
   // Water logs
@@ -65,10 +101,14 @@ export const storage = {
     const all = read(KEYS.water, []);
     const entry = { amount, date, id: uid(), timestamp: new Date().toISOString() };
     write(KEYS.water, [...all, entry]);
+    pushDayToServer(date);
     return entry;
   },
   deleteWaterLog: (id) => {
-    write(KEYS.water, read(KEYS.water, []).filter(w => w.id !== id));
+    const all = read(KEYS.water, []);
+    const entry = all.find(w => w.id === id);
+    write(KEYS.water, all.filter(w => w.id !== id));
+    if (entry?.date) pushDayToServer(entry.date);
   },
 
   // Weight logs
@@ -77,6 +117,7 @@ export const storage = {
     const all = read(KEYS.weights, []);
     const entry = { weight, date, id: uid(), timestamp: new Date().toISOString() };
     write(KEYS.weights, [...all, entry].sort((a, b) => a.date.localeCompare(b.date)));
+    pushDayToServer(date);
     return entry;
   },
 
