@@ -5,6 +5,7 @@ const KEYS = {
   water: 'nt_water',
   weights: 'nt_weights',
   products: 'nt_products',
+  steps: 'nt_steps',
 };
 
 function read(key, fallback) {
@@ -115,10 +116,21 @@ export const storage = {
   getWeightLogs: () => read(KEYS.weights, []),
   addWeightLog: ({ weight, date }) => {
     const all = read(KEYS.weights, []);
-    const entry = { weight, date, id: uid(), timestamp: new Date().toISOString() };
+    const rounded = Math.round(Number(weight) * 10) / 10;
+    const entry = { weight: rounded, date, id: uid(), timestamp: new Date().toISOString() };
     write(KEYS.weights, [...all, entry].sort((a, b) => a.date.localeCompare(b.date)));
     pushDayToServer(date);
     return entry;
+  },
+
+  // Steps (synced from Apple Health via health-sync)
+  getSteps: (date) => {
+    const all = read(KEYS.steps, {});
+    return date ? (all[date] ?? null) : all;
+  },
+  setSteps: (date, steps) => {
+    const all = read(KEYS.steps, {});
+    write(KEYS.steps, { ...all, [date]: Math.round(Number(steps)) });
   },
 
   // Product history (replaces Firestore products collection)

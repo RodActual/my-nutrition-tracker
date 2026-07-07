@@ -29,13 +29,21 @@ async function syncHealthData() {
         if (!alreadySynced) {
           storage.addLog({
             name: 'Active Calories Burned',
-            calories: -Math.round(entry.activeCalories), // negative = burned
+            calories: -Math.round(entry.activeCalories),
             protein: 0, carbs: 0, fat: 0,
             fiber: 0, sodium: 0, sugar: 0,
             source: 'AppleHealth',
             date: entry.date,
             timestamp: new Date(entry.date + 'T12:00:00').getTime(),
           });
+        }
+      }
+
+      // Merge steps
+      if (entry.steps) {
+        const existing = storage.getSteps(entry.date);
+        if (existing !== Math.round(entry.steps)) {
+          storage.setSteps(entry.date, entry.steps);
         }
       }
     }
