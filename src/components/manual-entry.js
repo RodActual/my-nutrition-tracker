@@ -4,7 +4,31 @@ import { useState, useEffect, useRef } from 'react';
 import { X, Search } from 'lucide-react';
 import { storage } from '@/lib/storage';
 
-export default function ManualEntry({ onAdd, editingLog, onClose }) {
+// initialData is either a log entry (flat fields, editing) or a scan result
+// ({ product, isNewFromScan, id }) whose values live under product.nutriments.
+function normalizeInitialData(initialData) {
+  if (!initialData) return null;
+  if (initialData.product) {
+    const p = initialData.product;
+    const n = p.nutriments ?? {};
+    const pick = (stub) => n[`${stub}_serving`] ?? n[`${stub}_100g`] ?? '';
+    return {
+      isScan: true,
+      name: p.product_name ?? p.name ?? '',
+      calories: pick('energy-kcal') !== '' ? Math.round(Number(pick('energy-kcal'))) : '',
+      protein: pick('proteins'),
+      carbs: pick('carbohydrates'),
+      fat: pick('fat'),
+      fiber: pick('fiber'),
+      sodium: pick('sodium'),
+      sugar: pick('sugars'),
+    };
+  }
+  return { ...initialData, fat: initialData.fats ?? initialData.fat ?? '', isScan: false };
+}
+
+export default function ManualEntry({ onAdd, initialData, onClose }) {
+  const editingLog = normalizeInitialData(initialData);
   const [name, setName] = useState(editingLog?.name ?? '');
   const [calories, setCalories] = useState(editingLog?.calories ?? '');
   const [protein, setProtein] = useState(editingLog?.protein ?? '');
@@ -71,7 +95,7 @@ export default function ManualEntry({ onAdd, editingLog, onClose }) {
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-lg font-semibold text-slate-100">
-            {editingLog ? 'Edit Food' : 'Log Food'}
+            {editingLog && !editingLog.isScan ? 'Edit Food' : 'Log Food'}
           </h2>
           <button onClick={onClose} aria-label="Close" className="text-zinc-400 hover:text-slate-100">
             <X size={20} />
@@ -153,7 +177,7 @@ export default function ManualEntry({ onAdd, editingLog, onClose }) {
             type="submit"
             className="w-full bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-semibold rounded-2xl py-3 mt-4"
           >
-            {editingLog ? 'Update' : 'Add Food'}
+            {editingLog && !editingLog.isScan ? 'Update' : 'Add Food'}
           </button>
         </form>
       </div>
