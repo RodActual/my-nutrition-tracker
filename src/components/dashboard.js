@@ -13,6 +13,7 @@ import SettingsModal from './settings-modal';
 import QuickLog from './quick-log';
 import FrequentFoods from './frequent-foods';
 import StreakCard from './streak-card';
+import ActivitySummary from './activity-summary';
 import TimeRangeSelector from './time-range-selector';
 import WeightTrendChart from './charts/weight-trend-chart';
 import EnergyBalanceChart from './charts/energy-balance-chart';
@@ -200,6 +201,8 @@ export default function Dashboard() {
             {userData?.targets && (
               <DailyProgress targets={userData.targets} current={dailyTotals} />
             )}
+
+            <ActivitySummary date={selectedDate} refreshKey={todaysLogs.length} />
 
             <StreakCard targets={userData?.targets} refreshKey={todaysLogs.length} />
 
