@@ -5,7 +5,7 @@ import {
   BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip,
   ReferenceLine, ResponsiveContainer,
 } from 'recharts';
-import { calcTDEE, getDailyBalances, lastNDates, formatShortDate } from '@/lib/trends';
+import { getBestTDEE, getDailyBalances, lastNDates, formatShortDate } from '@/lib/trends';
 
 function ChartTooltip({ active, payload }) {
   if (!active || !payload?.length) return null;
@@ -24,20 +24,22 @@ function ChartTooltip({ active, payload }) {
 export default function EnergyBalanceChart({ days = 30, profile }) {
   const [data, setData] = useState([]);
   const [avg, setAvg] = useState(null);
-  const tdee = calcTDEE(profile ?? {});
+  const [tdeeInfo, setTdeeInfo] = useState(undefined); // undefined = not computed yet
 
   useEffect(() => {
-    if (tdee == null) return;
-    const balances = getDailyBalances(lastNDates(days || 90), tdee)
+    const best = getBestTDEE(profile);
+    setTdeeInfo(best);
+    if (!best) return;
+    const balances = getDailyBalances(lastNDates(days || 90), best.tdee)
       .filter(b => b.hasFood)
       .map(b => ({ ...b, label: formatShortDate(b.date) }));
     setData(balances);
     setAvg(balances.length
       ? Math.round(balances.reduce((s, b) => s + b.balance, 0) / balances.length)
       : null);
-  }, [days, tdee]);
+  }, [days, profile]);
 
-  if (tdee == null) {
+  if (tdeeInfo === null) {
     return (
       <div className="bg-zinc-900 rounded-3xl border border-zinc-800 p-5">
         <p className="text-sm font-semibold text-slate-100 mb-2">Energy Balance</p>
@@ -57,7 +59,7 @@ export default function EnergyBalanceChart({ days = 30, profile }) {
 
   return (
     <div className="bg-zinc-900 rounded-3xl border border-zinc-800 p-5">
-      <div className="flex items-baseline justify-between mb-3">
+      <div className="flex items-baseline justify-between mb-1">
         <p className="text-sm font-semibold text-slate-100">Energy Balance</p>
         {avg != null && (
           <p className={`text-xs font-bold ${avg <= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
@@ -65,6 +67,14 @@ export default function EnergyBalanceChart({ days = 30, profile }) {
           </p>
         )}
       </div>
+      {tdeeInfo && (
+        <p className="text-[10px] text-zinc-500 mb-3">
+          TDEE {tdeeInfo.tdee.toLocaleString()} kcal
+          {tdeeInfo.source === 'adaptive'
+            ? ` · measured from your last ${tdeeInfo.spanDays} days`
+            : ' · formula estimate (unlocks measured TDEE with 2+ weigh-ins over 14 days)'}
+        </p>
+      )}
       <ResponsiveContainer width="100%" height={200}>
         <BarChart data={data}>
           <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" />

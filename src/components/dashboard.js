@@ -11,6 +11,8 @@ import ManualEntry from './manual-entry';
 import LogList from './log-list';
 import SettingsModal from './settings-modal';
 import QuickLog from './quick-log';
+import FrequentFoods from './frequent-foods';
+import StreakCard from './streak-card';
 import TimeRangeSelector from './time-range-selector';
 import WeightTrendChart from './charts/weight-trend-chart';
 import EnergyBalanceChart from './charts/energy-balance-chart';
@@ -124,6 +126,31 @@ export default function Dashboard() {
     setEditingLog(null);
   };
 
+  const copyLogsToToday = (entries) => {
+    for (const entry of entries) {
+      const { id, ...rest } = entry;
+      // preserve the original time-of-day so meal grouping carries over
+      const time = typeof rest.timestamp === 'string' && rest.timestamp.includes('T')
+        ? rest.timestamp.slice(11)
+        : '12:00:00.000Z';
+      storage.addLog({ ...rest, date: today, timestamp: `${today}T${time}` });
+    }
+    setSelectedDate(today);
+    loadData();
+  };
+
+  const copyYesterday = () => {
+    const d = new Date(today + 'T12:00:00');
+    d.setDate(d.getDate() - 1);
+    const yesterday = d.toISOString().split('T')[0];
+    const entries = storage.getLogs(yesterday).filter(l => l.source !== 'AppleHealth');
+    if (!entries.length) {
+      alert('Nothing logged yesterday to copy.');
+      return;
+    }
+    copyLogsToToday(entries);
+  };
+
   const changeDate = (days) => {
     const current = new Date(selectedDate + 'T12:00:00');
     current.setDate(current.getDate() + days);
@@ -174,6 +201,8 @@ export default function Dashboard() {
               <DailyProgress targets={userData.targets} current={dailyTotals} />
             )}
 
+            <StreakCard targets={userData?.targets} refreshKey={todaysLogs.length} />
+
             <div className="bg-zinc-900 rounded-3xl border border-zinc-800 p-5">
               <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-4">Micronutrients</p>
               <div className="grid grid-cols-3 gap-4">
@@ -203,6 +232,8 @@ export default function Dashboard() {
               logs={todaysLogs}
               onDelete={handleDelete}
               onEdit={(log) => { setEditingLog(log); setIsManualEntryOpen(true); }}
+              onCopyMeal={!isToday ? copyLogsToToday : undefined}
+              onCopyYesterday={isToday ? copyYesterday : undefined}
             />
           </div>
         )}
@@ -230,6 +261,7 @@ export default function Dashboard() {
                 <Zap size={18} /> Search / Manual Entry
               </button>
             </div>
+            <FrequentFoods onAdd={logFood} />
             <QuickLog onAdd={logFood} />
           </div>
         )}

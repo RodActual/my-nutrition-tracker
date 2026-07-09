@@ -51,11 +51,16 @@ export default function WeightTrendChart({ days = 30, profile, compact = false }
     setData(points);
 
     if (!compact && inRange.length) {
-      const current = inRange[inRange.length - 1].weight;
-      const first = inRange[0].weight;
-      const delta = Math.round((current - first) * 10) / 10;
+      const smoothed = points.filter(p => p.ma != null);
+      const trend = smoothed.length ? smoothed[smoothed.length - 1].ma : inRange[inRange.length - 1].weight;
+      const weekAgoIdx = Math.max(0, smoothed.length - 8);
+      const weekDelta = smoothed.length > 1
+        ? Math.round((trend - smoothed[weekAgoIdx].ma) * 10) / 10
+        : null;
       setStats({
-        current, delta,
+        trend,
+        weekDelta,
+        scale: inRange[inRange.length - 1].weight,
         goal: Number(profile?.goalWeight) || null,
         goalDate: projection?.goalDate ?? null,
         hasProjection: !!projection,
@@ -84,13 +89,15 @@ export default function WeightTrendChart({ days = 30, profile, compact = false }
       {stats && (
         <div className="flex gap-4 mb-3">
           <div>
-            <p className="text-[9px] font-bold text-zinc-500 uppercase">Current</p>
-            <p className="text-lg font-black text-slate-100">{stats.current}<span className="text-xs text-zinc-500 ml-0.5">lbs</span></p>
+            <p className="text-[9px] font-bold text-zinc-500 uppercase">Trend</p>
+            <p className="text-lg font-black text-slate-100">{stats.trend}<span className="text-xs text-zinc-500 ml-0.5">lbs</span></p>
+            <p className="text-[10px] text-zinc-500">scale {stats.scale}</p>
           </div>
           <div>
-            <p className="text-[9px] font-bold text-zinc-500 uppercase">Change</p>
-            <p className={`text-lg font-black ${stats.delta <= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-              {stats.delta > 0 ? '+' : ''}{stats.delta}<span className="text-xs text-zinc-500 ml-0.5">lbs</span>
+            <p className="text-[9px] font-bold text-zinc-500 uppercase">This week</p>
+            <p className={`text-lg font-black ${(stats.weekDelta ?? 0) <= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+              {stats.weekDelta == null ? '—' : `${stats.weekDelta > 0 ? '+' : ''}${stats.weekDelta}`}
+              <span className="text-xs text-zinc-500 ml-0.5">lbs</span>
             </p>
           </div>
           <div className="flex-1 text-right">
