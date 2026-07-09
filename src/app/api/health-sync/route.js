@@ -10,13 +10,27 @@ function getRedis() {
   return new Redis({ url, token });
 }
 
-// GET — client fetches on load to merge into localStorage
-export async function GET() {
+// GET — client fetches on load to merge into localStorage.
+// ?clear=1 wipes all records (recovery from bad Shortcut runs).
+// Existing records with legacy date keys are re-normalized on read.
+export async function GET(req) {
   const redis = getRedis();
   if (!redis) return NextResponse.json({});
   try {
+    if (new URL(req.url).searchParams.get('clear') === '1') {
+      await redis.set(KEY, {});
+      return NextResponse.json({ ok: true, cleared: true });
+    }
     const records = (await redis.get(KEY)) ?? {};
-    return NextResponse.json(records);
+    const cleaned = {};
+    for (const rec of Object.values(records)) {
+      if (rec && typeof rec === 'object') mergeRecord(cleaned, rec);
+    }
+    const changed =
+      Object.keys(cleaned).length !== Object.keys(records).length ||
+      Object.keys(cleaned).some(k => !(k in records));
+    if (changed) await redis.set(KEY, cleaned);
+    return NextResponse.json(cleaned);
   } catch {
     return NextResponse.json({});
   }
@@ -29,16 +43,34 @@ function num(v) {
   return Number.isFinite(n) ? n : null;
 }
 
+// Accept any date format Shortcuts might send ("Jul 4, 2026 at 7:05 PM",
+// "7/4/2026", ISO...) and normalize to YYYY-MM-DD.
+function normalizeDate(raw) {
+  if (!raw) return null;
+  const s = String(raw).replace(/[^\x20-\x7E]/g, ' ').replace(' at ', ' ').trim();
+  const isoMatch = s.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (isoMatch) return isoMatch[1];
+  const d = new Date(s);
+  if (isNaN(d)) return null;
+  const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 function mergeRecord(records, { date, weight, steps, activeCalories, restingCalories }) {
-  if (!date) return false;
-  const w = num(weight), s = num(steps), ac = num(activeCalories), rc = num(restingCalories);
-  records[date] = {
-    ...(records[date] ?? {}),
-    date,
-    ...(w != null && { weight: w }),
-    ...(s != null && { steps: s }),
-    ...(ac != null && { activeCalories: ac }),
-    ...(rc != null && { restingCalories: rc }),
+  const day = normalizeDate(date);
+  if (!day) return false;
+  // Zeros mean "no sample found" in the Shortcut — never overwrite real data with 0
+  const w = num(weight) || null;
+  const s = num(steps) || null;
+  const ac = num(activeCalories) || null;
+  const rc = num(restingCalories) || null;
+  records[day] = {
+    ...(records[day] ?? {}),
+    date: day,
+    ...(w != null && { weight: Math.round(w * 10) / 10 }),
+    ...(s != null && { steps: Math.round(s) }),
+    ...(ac != null && { activeCalories: Math.round(ac) }),
+    ...(rc != null && { restingCalories: Math.round(rc) }),
     syncedAt: new Date().toISOString(),
   };
   return true;
