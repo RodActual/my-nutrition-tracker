@@ -22,15 +22,23 @@ export async function GET() {
   }
 }
 
+// Shortcuts often sends numbers as formatted text ("9,131", "185.2 lb") — sanitize.
+function num(v) {
+  if (v == null || v === '') return null;
+  const n = Number(String(v).replace(/[^0-9.\-]/g, ''));
+  return Number.isFinite(n) ? n : null;
+}
+
 function mergeRecord(records, { date, weight, steps, activeCalories, restingCalories }) {
   if (!date) return false;
+  const w = num(weight), s = num(steps), ac = num(activeCalories), rc = num(restingCalories);
   records[date] = {
     ...(records[date] ?? {}),
     date,
-    ...(weight != null && { weight: Number(weight) }),
-    ...(steps != null && { steps: Number(steps) }),
-    ...(activeCalories != null && { activeCalories: Number(activeCalories) }),
-    ...(restingCalories != null && { restingCalories: Number(restingCalories) }),
+    ...(w != null && { weight: w }),
+    ...(s != null && { steps: s }),
+    ...(ac != null && { activeCalories: ac }),
+    ...(rc != null && { restingCalories: rc }),
     syncedAt: new Date().toISOString(),
   };
   return true;

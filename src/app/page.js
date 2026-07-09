@@ -6,7 +6,7 @@ import { storage } from '@/lib/storage';
 
 async function syncHealthData() {
   try {
-    const res = await fetch('/api/health-sync');
+    const res = await fetch('/api/health-sync', { cache: 'no-store' });
     if (!res.ok) return;
     const records = await res.json(); // { "2026-07-04": { weight, steps, ... }, ... }
 
@@ -20,6 +20,11 @@ async function syncHealthData() {
         if (!alreadyLogged) {
           storage.addWeightLog({ weight: entry.weight, date: entry.date });
         }
+      }
+
+      // Steps go straight into their own store (idempotent overwrite)
+      if (entry.steps) {
+        storage.setSteps(entry.date, entry.steps);
       }
 
       // Merge active calories as a log entry if present and not already synced
