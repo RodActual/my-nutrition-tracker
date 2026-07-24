@@ -21,7 +21,7 @@ import MacroTrendChart from './charts/macro-trend-chart';
 import ActivityChart from './charts/activity-chart';
 import WaterChart from './charts/water-chart';
 import WaterTracker from './water-tracker';
-import WeeklyInsights from './weekly-insights';
+import WeeklyReport from './weekly-report';
 
 const EMPTY_TOTALS = {
   calories: 0, protein: 0, carbs: 0, fats: 0,
@@ -50,6 +50,7 @@ export default function Dashboard() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [editingLog, setEditingLog] = useState(null);
   const [trendRange, setTrendRange] = useState(30);
+  const [undoEntry, setUndoEntry] = useState(null);
 
   const loadData = useCallback(() => {
     const profile = storage.getProfile();
@@ -103,10 +104,15 @@ export default function Dashboard() {
     if (existingLogId && existingLogId !== 'new-scan') {
       storage.updateLog(existingLogId, foodEntry);
     } else {
-      storage.addLog(foodEntry);
+      const saved = storage.addLog(foodEntry);
       const productName = foodEntry.name?.toLowerCase().trim();
       if (productName && productName !== 'unknown item') {
         storage.setProduct(productName, { ...foodEntry });
+      }
+      // One-tap adds get a 5s undo toast (no confirm dialog to slow logging down)
+      if (product.source === 'Quick' || product.source === 'Frequent') {
+        setUndoEntry({ id: saved.id, name: saved.name });
+        setTimeout(() => setUndoEntry(u => (u?.id === saved.id ? null : u)), 5000);
       }
     }
 
@@ -207,14 +213,14 @@ export default function Dashboard() {
             <StreakCard targets={userData?.targets} refreshKey={todaysLogs.length} />
 
             <div className="bg-zinc-900 rounded-3xl border border-zinc-800 p-5">
-              <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-4">Micronutrients</p>
-              <div className="grid grid-cols-3 gap-4">
-                <MicroStat label="Fiber" value={dailyTotals.fiber} unit="g" color="text-emerald-400" />
-                <MicroStat label="Sodium" value={dailyTotals.sodium} unit="mg" color="text-orange-400" />
-                <MicroStat label="Potassium" value={dailyTotals.potassium} unit="mg" color="text-blue-400" />
-                <MicroStat label="Sugar" value={dailyTotals.sugar} unit="g" color="text-rose-400" />
-                <MicroStat label="Iron" value={dailyTotals.iron} unit="mg" color="text-red-400" />
-                <MicroStat label="Calcium" value={dailyTotals.calcium} unit="mg" color="text-purple-400" />
+              <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-4">Micronutrients · % of daily target</p>
+              <div className="grid grid-cols-2 gap-x-5 gap-y-3">
+                <MicroStat label="Fiber" value={dailyTotals.fiber} unit="g" rda={38} color="#34d399" />
+                <MicroStat label="Sodium" value={dailyTotals.sodium} unit="mg" rda={2300} limit color="#fb923c" />
+                <MicroStat label="Potassium" value={dailyTotals.potassium} unit="mg" rda={3400} color="#60a5fa" />
+                <MicroStat label="Sugar" value={dailyTotals.sugar} unit="g" rda={50} limit color="#fb7185" />
+                <MicroStat label="Iron" value={dailyTotals.iron} unit="mg" rda={8} color="#f87171" />
+                <MicroStat label="Calcium" value={dailyTotals.calcium} unit="mg" rda={1000} color="#c084fc" />
               </div>
               <div className="mt-4 pt-4 border-t border-zinc-800 grid grid-cols-4 gap-2">
                 {[
@@ -277,10 +283,27 @@ export default function Dashboard() {
             <MacroTrendChart days={trendRange} targets={userData?.targets} />
             <ActivityChart days={trendRange} />
             <WaterChart days={trendRange} waterGoal={userData?.profile?.waterGoalOz} />
-            <WeeklyInsights dailyCalorieTarget={userData?.targets?.calories || 2000} />
+            <WeeklyReport profile={userData?.profile} />
           </div>
         )}
       </div>
+
+      {undoEntry && (
+        <div className="fixed bottom-20 left-4 right-4 max-w-md mx-auto bg-zinc-800 border border-zinc-700 rounded-2xl px-4 py-3 flex items-center justify-between z-40 shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <p className="text-sm text-slate-100 truncate flex-1">Logged {undoEntry.name}</p>
+          <button
+            type="button"
+            onClick={() => {
+              storage.deleteLog(undoEntry.id);
+              setUndoEntry(null);
+              loadData();
+            }}
+            className="ml-3 text-xs font-black uppercase tracking-wider text-emerald-400 shrink-0"
+          >
+            Undo
+          </button>
+        </div>
+      )}
 
       <nav className="fixed bottom-0 left-0 right-0 bg-zinc-900/95 backdrop-blur-xl border-t border-zinc-800 px-6 py-3 flex justify-around items-center z-30">
         {[
@@ -350,13 +373,25 @@ export default function Dashboard() {
   );
 }
 
-function MicroStat({ label, value, unit, color }) {
+// RDA-based micronutrient bar. `limit` nutrients (sodium, sugar) turn red past 100%.
+function MicroStat({ label, value, unit, rda, limit = false, color }) {
+  const pct = rda ? Math.min(100, Math.round(((value || 0) / rda) * 100)) : 0;
+  const over = limit && (value || 0) > rda;
+  const barColor = over ? '#ef4444' : color;
   return (
-    <div className="text-center">
-      <p className="text-[9px] font-bold text-zinc-500 uppercase mb-1">{label}</p>
-      <p className={`text-sm font-black ${color}`}>
-        {Math.round(value || 0)}<span className="text-[10px] ml-0.5 text-zinc-600">{unit}</span>
-      </p>
+    <div>
+      <div className="flex items-baseline justify-between mb-1">
+        <p className="text-[9px] font-bold text-zinc-500 uppercase">{label}</p>
+        <p className="text-[10px] font-black" style={{ color: barColor }}>
+          {Math.round(value || 0)}<span className="text-zinc-600 font-bold">/{rda}{unit}</span>
+        </p>
+      </div>
+      <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all"
+          style={{ width: `${pct}%`, backgroundColor: barColor }}
+        />
+      </div>
     </div>
   );
 }

@@ -37,6 +37,7 @@ export default function ManualEntry({ onAdd, initialData, onClose }) {
   const [fiber, setFiber] = useState(editingLog?.fiber ?? '');
   const [sodium, setSodium] = useState(editingLog?.sodium ?? '');
   const [sugar, setSugar] = useState(editingLog?.sugar ?? '');
+  const [servings, setServings] = useState('1');
   const [results, setResults] = useState([]);
   const searchRef = useRef(null);
 
@@ -73,15 +74,17 @@ export default function ManualEntry({ onAdd, initialData, onClose }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!name.trim()) return;
+    const qty = Number(servings) > 0 ? Number(servings) : 1;
+    const scale = (v) => Math.round((Number(v) || 0) * qty * 10) / 10;
     onAdd({
-      name,
-      calories: Number(calories) || 0,
-      protein: Number(protein) || 0,
-      carbs: Number(carbs) || 0,
-      fat: Number(fat) || 0,
-      fiber: Number(fiber) || 0,
-      sodium: Number(sodium) || 0,
-      sugar: Number(sugar) || 0,
+      name: qty !== 1 ? `${name} (×${qty})` : name,
+      calories: Math.round((Number(calories) || 0) * qty),
+      protein: scale(protein),
+      carbs: scale(carbs),
+      fat: scale(fat),
+      fiber: scale(fiber),
+      sodium: scale(sodium),
+      sugar: scale(sugar),
     });
     onClose();
   };
@@ -135,6 +138,37 @@ export default function ManualEntry({ onAdd, initialData, onClose }) {
                 ))}
               </ul>
             )}
+          </div>
+
+          {/* Servings */}
+          <div>
+            <label className="block text-xs text-zinc-400 mb-1">Servings</label>
+            <div className="flex items-center gap-2">
+              {[0.5, 1, 1.5, 2].map(q => (
+                <button
+                  key={q}
+                  type="button"
+                  onClick={() => setServings(String(q))}
+                  className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all ${
+                    Number(servings) === q
+                      ? 'bg-emerald-500 text-zinc-950 border-emerald-500'
+                      : 'bg-zinc-800 text-zinc-400 border-zinc-700'
+                  }`}
+                >
+                  {q}
+                </button>
+              ))}
+              <input
+                type="number"
+                min="0.1"
+                step="0.25"
+                inputMode="decimal"
+                value={servings}
+                onChange={(e) => setServings(e.target.value)}
+                className={`${inputClass} flex-1`}
+              />
+            </div>
+            <p className="text-[10px] text-zinc-500 mt-1">Values below are per serving — totals multiply on save</p>
           </div>
 
           {/* Macro row */}
