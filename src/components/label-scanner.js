@@ -41,21 +41,23 @@ export default function LabelScanner({ onResult, onClose }) {
   }, []);
 
   const captureAndScan = async () => {
-    setIsProcessing(true);
+    setError(null);
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    
     if (!video || !canvas) return;
 
+    if (!video.videoWidth) {
+      setError('Camera is still starting — give it a second and try again.');
+      return;
+    }
+
+    setIsProcessing(true);
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     const ctx = canvas.getContext('2d');
     ctx.drawImage(video, 0, 0);
 
     try {
-      // FIX: Tesseract.js v4+ API — language is passed directly to createWorker.
-      // The old pattern of worker.loadLanguage() + worker.initialize() was removed
-      // in v4 and will throw a "worker.loadLanguage is not a function" runtime error.
       const worker = await createWorker('eng', 1, {
         logger: m => {
           if (m.status === 'recognizing text') {
@@ -65,25 +67,40 @@ export default function LabelScanner({ onResult, onClose }) {
       });
 
       const { data: { text } } = await worker.recognize(canvas.toDataURL('image/jpeg'));
-      
-      const parsedData = parseNutritionText(text);
-      onResult(parsedData);
-      
       await worker.terminate();
+
+      const parsedData = parseNutritionText(text);
+      const n = parsedData.nutriments;
+      const gotAnything = Object.values(n).some(v => v > 0);
+      if (!gotAnything) {
+        setIsProcessing(false);
+        setProgress(0);
+        setError("Couldn't read any values off the label. Fill the frame with the nutrition facts panel, hold steady in good light, and try again.");
+        return;
+      }
+      onResult(parsedData);
     } catch (err) {
       console.error("OCR Error:", err);
       setIsProcessing(false);
+      setProgress(0);
+      setError('Scan failed — try again, or enter the values manually.');
     }
   };
 
   const parseNutritionText = (text) => {
-    const lines = text.toLowerCase().split('\n');
-    
-    const findNum = (keywords) => {
-      const line = lines.find(l => keywords.some(k => l.includes(k)));
-      if (!line) return 0;
-      const match = line.match(/\d+/);
-      return match ? parseInt(match[0]) : 0;
+    const lines = text.toLowerCase().split('\n').map(l => l.trim()).filter(Boolean);
+
+    // Find the number that directly follows the keyword on its line, so
+    // "total fat 8g 10%" yields 8 (not 10) and decimals like 2.5 survive.
+    const findNum = (keywords, { exclude = [] } = {}) => {
+      for (const k of keywords) {
+        const line = lines.find(l => l.includes(k) && !exclude.some(x => l.includes(x)));
+        if (!line) continue;
+        const after = line.slice(line.indexOf(k) + k.length);
+        const m = after.match(/(\d+(?:[.,]\d+)?)/) ?? line.match(/(\d+(?:[.,]\d+)?)/);
+        if (m) return parseFloat(m[1].replace(',', '.'));
+      }
+      return 0;
     };
 
     return {
@@ -92,13 +109,13 @@ export default function LabelScanner({ onResult, onClose }) {
       // Note: sodium is returned in mg here. dashboard.js logFood() will NOT apply
       // the x1000 multiplier since this product has no source: 'Global' flag.
       nutriments: {
-        'energy-kcal_100g': findNum(['calories', 'energy', 'kcal']),
+        'energy-kcal_100g': Math.round(findNum(['calories', 'energy', 'kcal'], { exclude: ['from fat', 'fat cal'] })),
         'proteins_100g': findNum(['protein']),
-        'carbohydrates_100g': findNum(['carbohydrate', 'total carb', 'carbs']),
-        'fat_100g': findNum(['total fat', 'fat', 'lipids']),
-        'fiber_100g': findNum(['fiber', 'dietary fiber']),
+        'carbohydrates_100g': findNum(['total carbohydrate', 'total carb', 'carbohydrate', 'carbs']),
+        'fat_100g': findNum(['total fat', 'fat', 'lipids'], { exclude: ['saturated', 'trans', 'calories'] }),
+        'fiber_100g': findNum(['dietary fiber', 'fiber', 'fibre']),
         'sodium_100g': findNum(['sodium']), // already in mg from the label
-        'sugars_100g': findNum(['sugars', 'total sugars']),
+        'sugars_100g': findNum(['total sugars', 'sugars', 'sugar'], { exclude: ['added', 'alcohol'] }),
         'calcium_100g': findNum(['calcium']),
         'iron_100g': findNum(['iron'])
       }
