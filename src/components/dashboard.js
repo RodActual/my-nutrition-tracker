@@ -312,7 +312,10 @@ export default function Dashboard() {
         </div>
       )}
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-zinc-900/95 backdrop-blur-xl border-t border-zinc-800 px-6 py-3 flex justify-around items-center z-30">
+      <nav
+        className="fixed bottom-0 left-0 right-0 bg-zinc-900/95 backdrop-blur-xl border-t border-zinc-800 px-6 pt-3 flex justify-around items-center z-30"
+        style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
+      >
         {[
           { id: 'home', icon: Home, label: 'Home' },
           { id: 'add', icon: Plus, label: 'Log' },
