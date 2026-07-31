@@ -12,6 +12,8 @@ import LogList from './log-list';
 import SettingsModal from './settings-modal';
 import QuickLog from './quick-log';
 import FrequentFoods from './frequent-foods';
+import RecipesCard from './recipes-card';
+import RecipeBuilder from './recipe-builder';
 import StreakCard from './streak-card';
 import ActivitySummary from './activity-summary';
 import WaterQuickLog from './water-quick-log';
@@ -55,6 +57,8 @@ export default function Dashboard() {
   const [editingLog, setEditingLog] = useState(null);
   const [trendRange, setTrendRange] = useState(30);
   const [undoEntry, setUndoEntry] = useState(null);
+  const [isRecipeBuilderOpen, setIsRecipeBuilderOpen] = useState(false);
+  const [recipesVersion, setRecipesVersion] = useState(0);
 
   const loadData = useCallback(() => {
     const profile = storage.getProfile();
@@ -114,7 +118,7 @@ export default function Dashboard() {
         storage.setProduct(productName, { ...foodEntry });
       }
       // One-tap adds get a 5s undo toast (no confirm dialog to slow logging down)
-      if (product.source === 'Quick' || product.source === 'Frequent') {
+      if (['Quick', 'Frequent', 'Recipe'].includes(product.source)) {
         setUndoEntry({ id: saved.id, name: saved.name });
         setTimeout(() => setUndoEntry(u => (u?.id === saved.id ? null : u)), 5000);
       }
@@ -278,6 +282,11 @@ export default function Dashboard() {
                 <Zap size={18} /> Search / Manual Entry
               </button>
             </div>
+            <RecipesCard
+              key={recipesVersion}
+              onAdd={logFood}
+              onOpenBuilder={() => setIsRecipeBuilderOpen(true)}
+            />
             <FrequentFoods onAdd={logFood} />
             <QuickLog onAdd={logFood} />
           </div>
@@ -379,6 +388,13 @@ export default function Dashboard() {
             setIsManualEntryOpen(true);
           }}
           onClose={() => setIsLabelScanning(false)}
+        />
+      )}
+
+      {isRecipeBuilderOpen && (
+        <RecipeBuilder
+          onClose={() => setIsRecipeBuilderOpen(false)}
+          onSaved={() => setRecipesVersion(v => v + 1)}
         />
       )}
 

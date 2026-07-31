@@ -6,6 +6,7 @@ const KEYS = {
   weights: 'nt_weights',
   products: 'nt_products',
   steps: 'nt_steps',
+  recipes: 'nt_recipes',
 };
 
 function read(key, fallback) {
@@ -223,6 +224,18 @@ export const storage = {
   setSteps: (date, steps) => {
     const all = read(KEYS.steps, {});
     write(KEYS.steps, { ...all, [date]: Math.round(Number(steps)) });
+  },
+
+  // Recipes: { id, name, servings, ingredients: [flat nutrient items], createdAt }
+  getRecipes: () => read(KEYS.recipes, []),
+  addRecipe: (recipe) => {
+    const all = read(KEYS.recipes, []);
+    const entry = { ...recipe, id: uid(), createdAt: new Date().toISOString() };
+    write(KEYS.recipes, [entry, ...all]);
+    return entry;
+  },
+  deleteRecipe: (id) => {
+    write(KEYS.recipes, read(KEYS.recipes, []).filter(r => r.id !== id));
   },
 
   // Product history (replaces Firestore products collection)
