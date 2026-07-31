@@ -125,17 +125,29 @@ export default function LabelScanner({ onResult, onClose }) {
   };
 
   const parseNutritionText = (text) => {
-    const lines = text.toLowerCase().split('\n').map(l => l.trim()).filter(Boolean);
+    // Work on one normalized stream so keyword and value can straddle OCR line
+    // breaks (the FDA label puts "Calories" and its number on separate lines).
+    // Trap phrases are rewritten first so bare keywords can't match inside them.
+    const stream = text
+      .toLowerCase()
+      .replace(/\s+/g, ' ')
+      .replace(/calories from fat\s*\d*/g, ' ')
+      .replace(/saturated fat/g, 'satfat')
+      .replace(/trans fat/g, 'transfat')
+      .replace(/added sugars?/g, 'addedsugar')
+      .replace(/sugar alcohol/g, 'sugaralcohol');
 
-    // Find the number that directly follows the keyword on its line, so
-    // "total fat 8g 10%" yields 8 (not 10) and decimals like 2.5 survive.
-    const findNum = (keywords, { exclude = [] } = {}) => {
+    // First number within a short window after the keyword — tolerates the
+    // serving-size column ("8g 10%": takes 8) and decimals/comma decimals.
+    const findNum = (keywords, windowLen = 24) => {
       for (const k of keywords) {
-        const line = lines.find(l => l.includes(k) && !exclude.some(x => l.includes(x)));
-        if (!line) continue;
-        const after = line.slice(line.indexOf(k) + k.length);
-        const m = after.match(/(\d+(?:[.,]\d+)?)/) ?? line.match(/(\d+(?:[.,]\d+)?)/);
-        if (m) return parseFloat(m[1].replace(',', '.'));
+        let idx = stream.indexOf(k);
+        while (idx !== -1) {
+          const after = stream.slice(idx + k.length, idx + k.length + windowLen);
+          const m = after.match(/(\d+(?:[.,]\d+)?)/);
+          if (m) return parseFloat(m[1].replace(',', '.'));
+          idx = stream.indexOf(k, idx + 1);
+        }
       }
       return 0;
     };
@@ -146,13 +158,13 @@ export default function LabelScanner({ onResult, onClose }) {
       // Note: sodium is returned in mg here. dashboard.js logFood() will NOT apply
       // the x1000 multiplier since this product has no source: 'Global' flag.
       nutriments: {
-        'energy-kcal_100g': Math.round(findNum(['calories', 'energy', 'kcal'], { exclude: ['from fat', 'fat cal'] })),
+        'energy-kcal_100g': Math.round(findNum(['calories', 'kcal'])),
         'proteins_100g': findNum(['protein']),
         'carbohydrates_100g': findNum(['total carbohydrate', 'total carb', 'carbohydrate', 'carbs']),
-        'fat_100g': findNum(['total fat', 'fat', 'lipids'], { exclude: ['saturated', 'trans', 'calories'] }),
+        'fat_100g': findNum(['total fat', 'fat']),
         'fiber_100g': findNum(['dietary fiber', 'fiber', 'fibre']),
         'sodium_100g': findNum(['sodium']), // already in mg from the label
-        'sugars_100g': findNum(['total sugars', 'sugars', 'sugar'], { exclude: ['added', 'alcohol'] }),
+        'sugars_100g': findNum(['total sugars', 'sugars', 'sugar']),
         'calcium_100g': findNum(['calcium']),
         'iron_100g': findNum(['iron'])
       }
