@@ -14,6 +14,8 @@ import QuickLog from './quick-log';
 import FrequentFoods from './frequent-foods';
 import StreakCard from './streak-card';
 import ActivitySummary from './activity-summary';
+import WaterQuickLog from './water-quick-log';
+import GoalCelebration from './goal-celebration';
 import TimeRangeSelector from './time-range-selector';
 import WeightTrendChart from './charts/weight-trend-chart';
 import EnergyBalanceChart from './charts/energy-balance-chart';
@@ -210,6 +212,8 @@ export default function Dashboard() {
 
             <ActivitySummary date={selectedDate} refreshKey={todaysLogs.length} />
 
+            <WaterQuickLog date={selectedDate} waterGoal={userData?.profile?.waterGoalOz} />
+
             <StreakCard targets={userData?.targets} refreshKey={todaysLogs.length} />
 
             <div className="bg-zinc-900 rounded-3xl border border-zinc-800 p-5">
@@ -321,6 +325,14 @@ export default function Dashboard() {
           </button>
         ))}
       </nav>
+
+      <GoalCelebration
+        profile={userData?.profile}
+        onUpdated={(action) => {
+          loadData();
+          if (action === 'open-settings') setIsSettingsOpen(true);
+        }}
+      />
 
       {isSettingsOpen && (
         <SettingsModal
