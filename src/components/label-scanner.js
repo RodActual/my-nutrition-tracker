@@ -25,6 +25,8 @@ export default function LabelScanner({ onResult, onClose }) {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: 'environment',
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
           // Hint continuous autofocus where the browser supports it
           advanced: [{ focusMode: 'continuous' }],
         },
@@ -62,10 +64,33 @@ export default function LabelScanner({ onResult, onClose }) {
     }
 
     setIsProcessing(true);
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+
+    // Upscale small frames — OCR accuracy improves sharply with resolution
+    const scale = video.videoWidth < 1600 ? Math.min(2, 1600 / video.videoWidth) : 1;
+    canvas.width = Math.round(video.videoWidth * scale);
+    canvas.height = Math.round(video.videoHeight * scale);
     const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    // Grayscale + contrast stretch: labels are black-on-white, so pushing the
+    // histogram to full range makes the text much easier for Tesseract
+    const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const d = img.data;
+    let min = 255, max = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      const g = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+      d[i] = d[i + 1] = d[i + 2] = g;
+      if (g < min) min = g;
+      if (g > max) max = g;
+    }
+    const range = Math.max(1, max - min);
+    for (let i = 0; i < d.length; i += 4) {
+      const v = Math.round(((d[i] - min) / range) * 255);
+      d[i] = d[i + 1] = d[i + 2] = v;
+    }
+    ctx.putImageData(img, 0, 0);
 
     try {
       const worker = await createWorker('eng', 1, {
@@ -75,8 +100,10 @@ export default function LabelScanner({ onResult, onClose }) {
           }
         }
       });
+      // PSM 6: treat the image as one uniform block of text — right for a label panel
+      await worker.setParameters({ tessedit_pageseg_mode: '6' });
 
-      const { data: { text } } = await worker.recognize(canvas.toDataURL('image/jpeg'));
+      const { data: { text } } = await worker.recognize(canvas.toDataURL('image/png'));
       await worker.terminate();
 
       const parsedData = parseNutritionText(text);
