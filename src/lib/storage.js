@@ -136,9 +136,11 @@ function pushDayToServer(date) {
     const sugar    = logs.reduce((s, l) => s + (l.sugar    || 0), 0);
     const water    = waterLogs.reduce((s, w) => s + (w.amount || 0), 0);
 
+    const syncCode = localStorage.getItem('nt_sync_code');
+    if (!syncCode) return;
     fetch('/api/nutrition-export', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-sync-code': syncCode },
       body: JSON.stringify({
         date,
         calories, protein, carbs, fat, fiber, sodium, sugar, water,

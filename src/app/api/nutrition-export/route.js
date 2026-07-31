@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { Redis } from '@upstash/redis';
+import { createHash } from 'crypto';
 
-const KEY = 'nutrition_export';
+const LEGACY_KEY = 'nutrition_export';
 
 function getRedis() {
   const url = process.env.UPSTASH_REDIS_REST_URL ?? process.env.KV_REST_API_URL;
@@ -10,12 +11,35 @@ function getRedis() {
   return new Redis({ url, token });
 }
 
-// GET — called by Apple Shortcut to read daily nutrition totals
-export async function GET() {
+function getCode(req) {
+  const code = req.headers.get('x-sync-code') ?? new URL(req.url).searchParams.get('code');
+  return code && code.length >= 6 ? code : null;
+}
+
+function keyFor(code) {
+  return 'nutrition_export:' + createHash('sha256').update(String(code)).digest('hex');
+}
+
+async function loadRecords(redis, key) {
+  let records = (await redis.get(key)) ?? null;
+  if (records) return records;
+  const legacy = await redis.get(LEGACY_KEY);
+  if (legacy && typeof legacy === 'object') {
+    await redis.set(key, legacy);
+    await redis.del(LEGACY_KEY);
+    return legacy;
+  }
+  return {};
+}
+
+// GET — called by the Apple Shortcut to read daily nutrition totals
+export async function GET(req) {
+  const code = getCode(req);
+  if (!code) return NextResponse.json({ error: 'sync code required' }, { status: 401 });
   const redis = getRedis();
   if (!redis) return NextResponse.json({});
   try {
-    const records = (await redis.get(KEY)) ?? {};
+    const records = await loadRecords(redis, keyFor(code));
     return NextResponse.json(records);
   } catch {
     return NextResponse.json({});
@@ -23,8 +47,9 @@ export async function GET() {
 }
 
 // POST — called by the app whenever food/water/weight is logged
-// Body: { date, calories, protein, carbs, fat, fiber, sodium, sugar, water, weight }
 export async function POST(req) {
+  const code = getCode(req);
+  if (!code) return NextResponse.json({ error: 'sync code required' }, { status: 401 });
   let body;
   try {
     body = await req.json();
@@ -37,9 +62,10 @@ export async function POST(req) {
 
   const redis = getRedis();
   if (!redis) return NextResponse.json({ error: 'Redis not configured' }, { status: 503 });
+  const key = keyFor(code);
 
   try {
-    const records = (await redis.get(KEY)) ?? {};
+    const records = await loadRecords(redis, key);
     records[date] = {
       date,
       ...(calories != null && { calories: Number(calories) }),
@@ -53,7 +79,7 @@ export async function POST(req) {
       ...(weight   != null && { weight:   Number(weight)   }),
       syncedAt: new Date().toISOString(),
     };
-    await redis.set(KEY, records);
+    await redis.set(key, records);
     return NextResponse.json({ ok: true, date, data: records[date] });
   } catch {
     return NextResponse.json({ error: 'Redis write failed' }, { status: 503 });

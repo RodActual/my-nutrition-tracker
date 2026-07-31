@@ -7,7 +7,12 @@ import { storage, getSyncCode, pullRemoteData } from '@/lib/storage';
 
 async function syncHealthData() {
   try {
-    const res = await fetch('/api/health-sync', { cache: 'no-store' });
+    const code = getSyncCode();
+    if (!code) return;
+    const res = await fetch('/api/health-sync', {
+      cache: 'no-store',
+      headers: { 'x-sync-code': code },
+    });
     if (!res.ok) return;
     const records = await res.json(); // { "2026-07-04": { weight, steps, ... }, ... }
 

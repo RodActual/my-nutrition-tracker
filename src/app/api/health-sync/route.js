@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { Redis } from '@upstash/redis';
+import { createHash } from 'crypto';
 
-const KEY = 'health_sync';
+const LEGACY_KEY = 'health_sync';
 
 function getRedis() {
   const url = process.env.UPSTASH_REDIS_REST_URL ?? process.env.KV_REST_API_URL;
@@ -10,30 +11,14 @@ function getRedis() {
   return new Redis({ url, token });
 }
 
-// GET — client fetches on load to merge into localStorage.
-// ?clear=1 wipes all records (recovery from bad Shortcut runs).
-// Existing records with legacy date keys are re-normalized on read.
-export async function GET(req) {
-  const redis = getRedis();
-  if (!redis) return NextResponse.json({});
-  try {
-    if (new URL(req.url).searchParams.get('clear') === '1') {
-      await redis.set(KEY, {});
-      return NextResponse.json({ ok: true, cleared: true });
-    }
-    const records = (await redis.get(KEY)) ?? {};
-    const cleaned = {};
-    for (const rec of Object.values(records)) {
-      if (rec && typeof rec === 'object') mergeRecord(cleaned, rec);
-    }
-    const changed =
-      Object.keys(cleaned).length !== Object.keys(records).length ||
-      Object.keys(cleaned).some(k => !(k in records));
-    if (changed) await redis.set(KEY, cleaned);
-    return NextResponse.json(cleaned);
-  } catch {
-    return NextResponse.json({});
-  }
+// Per-user key derived from the sync code (header or ?code= for Shortcut convenience)
+function getCode(req) {
+  const code = req.headers.get('x-sync-code') ?? new URL(req.url).searchParams.get('code');
+  return code && code.length >= 6 ? code : null;
+}
+
+function keyFor(code) {
+  return 'health_sync:' + createHash('sha256').update(String(code)).digest('hex');
 }
 
 // Shortcuts often sends numbers as formatted text ("9,131", "185.2 lb") — sanitize.
@@ -43,8 +28,7 @@ function num(v) {
   return Number.isFinite(n) ? n : null;
 }
 
-// Accept any date format Shortcuts might send ("Jul 4, 2026 at 7:05 PM",
-// "7/4/2026", ISO...) and normalize to YYYY-MM-DD.
+// Accept any date format Shortcuts might send and normalize to YYYY-MM-DD.
 function normalizeDate(raw) {
   if (!raw) return null;
   const s = String(raw).replace(/[^\x20-\x7E]/g, ' ').replace(' at ', ' ').trim();
@@ -76,10 +60,51 @@ function mergeRecord(records, { date, weight, steps, activeCalories, restingCalo
   return true;
 }
 
-// POST — called by the Apple Shortcut
-// Body: { date, weight?, steps?, activeCalories?, restingCalories? }
-//   or an array of those objects for historical backfill
+// One-time migration: the first authenticated caller claims any legacy
+// un-scoped records, then the legacy key is deleted.
+async function loadRecords(redis, key) {
+  let records = (await redis.get(key)) ?? null;
+  if (records) return records;
+  const legacy = await redis.get(LEGACY_KEY);
+  if (legacy && typeof legacy === 'object') {
+    await redis.set(key, legacy);
+    await redis.del(LEGACY_KEY);
+    return legacy;
+  }
+  return {};
+}
+
+// GET — pull records for this sync code. ?clear=1 wipes them (auth required).
+export async function GET(req) {
+  const code = getCode(req);
+  if (!code) return NextResponse.json({ error: 'sync code required' }, { status: 401 });
+  const redis = getRedis();
+  if (!redis) return NextResponse.json({});
+  const key = keyFor(code);
+  try {
+    if (new URL(req.url).searchParams.get('clear') === '1') {
+      await redis.set(key, {});
+      return NextResponse.json({ ok: true, cleared: true });
+    }
+    const records = await loadRecords(redis, key);
+    const cleaned = {};
+    for (const rec of Object.values(records)) {
+      if (rec && typeof rec === 'object') mergeRecord(cleaned, rec);
+    }
+    const changed =
+      Object.keys(cleaned).length !== Object.keys(records).length ||
+      Object.keys(cleaned).some(k => !(k in records));
+    if (changed) await redis.set(key, cleaned);
+    return NextResponse.json(cleaned);
+  } catch {
+    return NextResponse.json({});
+  }
+}
+
+// POST — called by the Apple Shortcut. Single object or array (backfill).
 export async function POST(req) {
+  const code = getCode(req);
+  if (!code) return NextResponse.json({ error: 'sync code required' }, { status: 401 });
   let body;
   try {
     body = await req.json();
@@ -94,14 +119,15 @@ export async function POST(req) {
 
   const redis = getRedis();
   if (!redis) return NextResponse.json({ error: 'Redis not configured' }, { status: 503 });
+  const key = keyFor(code);
 
   try {
-    const records = (await redis.get(KEY)) ?? {};
+    const records = await loadRecords(redis, key);
     let merged = 0;
     for (const item of items) {
       if (item && typeof item === 'object' && mergeRecord(records, item)) merged++;
     }
-    await redis.set(KEY, records);
+    await redis.set(key, records);
     return NextResponse.json({ ok: true, merged });
   } catch {
     return NextResponse.json({ error: 'Redis write failed' }, { status: 503 });
