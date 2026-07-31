@@ -89,6 +89,11 @@ export default function ManualEntry({ onAdd, initialData, onClose }) {
     if (term.length < 3) return;
     const controller = new AbortController();
     const timer = setTimeout(async () => {
+      // USDA (generic/whole foods, best micros) and OpenFoodFacts (branded) in parallel
+      const usdaPromise = fetch(`/api/food-search?q=${encodeURIComponent(term)}`, { signal: controller.signal })
+        .then(r => (r.ok ? r.json() : { foods: [] }))
+        .then(d => d.foods ?? [])
+        .catch(() => []);
       try {
         const res = await fetch(
           `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(term)}&search_simple=1&action=process&json=1&page_size=6&fields=product_name,brands,nutriments`,
@@ -96,6 +101,7 @@ export default function ManualEntry({ onAdd, initialData, onClose }) {
         );
         if (!res.ok) return;
         const data = await res.json();
+        const usda = await usdaPromise;
         const online = (data.products ?? [])
           .filter(p => p.product_name && p.nutriments)
           .map(p => {
@@ -124,9 +130,15 @@ export default function ManualEntry({ onAdd, initialData, onClose }) {
           })
           .filter(p => p.calories > 0);
         setResults(prev => {
-          const history = prev.filter(r => r.source !== 'Global');
+          const history = prev.filter(r => r.source !== 'Global' && r.source !== 'USDA');
           const seen = new Set(history.map(h => (h.name || '').toLowerCase()));
-          return [...history, ...online.filter(o => !seen.has(o.name.toLowerCase()))].slice(0, 8);
+          const merged = [...usda, ...online].filter(o => {
+            const key = o.name.toLowerCase();
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          });
+          return [...history, ...merged].slice(0, 10);
         });
       } catch { /* offline or aborted — history results remain */ }
     }, 400);
@@ -209,8 +221,10 @@ export default function ManualEntry({ onAdd, initialData, onClose }) {
                     >
                       <span className="truncate">{item.name}</span>
                       <span className="ml-2 text-xs text-zinc-500 shrink-0">{item.calories} kcal</span>
-                      <span className={`ml-2 text-[9px] font-bold uppercase tracking-wider shrink-0 ${item.source === 'Global' ? 'text-blue-400' : 'text-emerald-400'}`}>
-                        {item.source === 'Global' ? 'Web' : 'History'}
+                      <span className={`ml-2 text-[9px] font-bold uppercase tracking-wider shrink-0 ${
+                        item.source === 'Global' ? 'text-blue-400' : item.source === 'USDA' ? 'text-amber-400' : 'text-emerald-400'
+                      }`}>
+                        {item.source === 'Global' ? 'Web' : item.source === 'USDA' ? 'USDA' : 'History'}
                       </span>
                     </button>
                   </li>
