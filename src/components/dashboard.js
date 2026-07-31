@@ -15,6 +15,7 @@ import FrequentFoods from './frequent-foods';
 import StreakCard from './streak-card';
 import ActivitySummary from './activity-summary';
 import WaterQuickLog from './water-quick-log';
+import WeighInCard from './weigh-in-card';
 import GoalCelebration from './goal-celebration';
 import TimeRangeSelector from './time-range-selector';
 import WeightTrendChart from './charts/weight-trend-chart';
@@ -213,6 +214,8 @@ export default function Dashboard() {
             <ActivitySummary date={selectedDate} refreshKey={todaysLogs.length} />
 
             <WaterQuickLog date={selectedDate} waterGoal={userData?.profile?.waterGoalOz} />
+
+            <WeighInCard onSaved={loadData} />
 
             <StreakCard targets={userData?.targets} refreshKey={todaysLogs.length} />
 
