@@ -52,11 +52,51 @@ export default function ManualEntry({ onAdd, initialData, onClose }) {
   }, []);
 
   useEffect(() => {
-    if (name.trim().length > 1) {
-      setResults(storage.searchProducts(name));
-    } else {
+    const term = name.trim();
+    if (term.length <= 1) {
       setResults([]);
+      return;
     }
+    // History results are instant
+    setResults(storage.searchProducts(term));
+
+    // OpenFoodFacts text search, debounced; merged below history results
+    if (term.length < 3) return;
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(term)}&search_simple=1&action=process&json=1&page_size=6&fields=product_name,brands,nutriments`,
+          { signal: controller.signal }
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        const online = (data.products ?? [])
+          .filter(p => p.product_name && p.nutriments)
+          .map(p => {
+            const n = p.nutriments;
+            const pick = (stub) => Number(n[`${stub}_serving`] ?? n[`${stub}_100g`] ?? 0) || 0;
+            return {
+              name: p.brands ? `${p.product_name} (${p.brands.split(',')[0]})` : p.product_name,
+              calories: Math.round(pick('energy-kcal')),
+              protein: pick('proteins'),
+              carbs: pick('carbohydrates'),
+              fat: pick('fat'),
+              fiber: pick('fiber'),
+              sodium: pick('sodium') * 1000, // OFF sodium is grams → mg
+              sugar: pick('sugars'),
+              source: 'Global',
+            };
+          })
+          .filter(p => p.calories > 0);
+        setResults(prev => {
+          const history = prev.filter(r => r.source !== 'Global');
+          const seen = new Set(history.map(h => (h.name || '').toLowerCase()));
+          return [...history, ...online.filter(o => !seen.has(o.name.toLowerCase()))].slice(0, 8);
+        });
+      } catch { /* offline or aborted — history results remain */ }
+    }, 400);
+    return () => { clearTimeout(timer); controller.abort(); };
   }, [name]);
 
   const handleSelect = (item) => {
@@ -131,8 +171,11 @@ export default function ManualEntry({ onAdd, initialData, onClose }) {
                       onClick={() => handleSelect(item)}
                       className="w-full text-left bg-zinc-800 hover:bg-zinc-700 px-4 py-2 text-sm text-slate-200 cursor-pointer"
                     >
-                      {item.name}
-                      <span className="ml-2 text-xs text-zinc-500">{item.calories} kcal</span>
+                      <span className="truncate">{item.name}</span>
+                      <span className="ml-2 text-xs text-zinc-500 shrink-0">{item.calories} kcal</span>
+                      <span className={`ml-2 text-[9px] font-bold uppercase tracking-wider shrink-0 ${item.source === 'Global' ? 'text-blue-400' : 'text-emerald-400'}`}>
+                        {item.source === 'Global' ? 'Web' : 'History'}
+                      </span>
                     </button>
                   </li>
                 ))}
