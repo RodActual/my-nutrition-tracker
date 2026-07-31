@@ -22,10 +22,31 @@ function normalizeInitialData(initialData) {
       fiber: pick('fiber'),
       sodium: pick('sodium'),
       sugar: pick('sugars'),
+      potassium: pick('potassium'),
+      calcium: pick('calcium'),
+      iron: pick('iron'),
+      magnesium: pick('magnesium'),
+      zinc: pick('zinc'),
+      vitA: pick('vitamin-a'),
+      vitC: pick('vitamin-c'),
+      vitD: pick('vitamin-d'),
+      vitB12: pick('vitamin-b12'),
     };
   }
   return { ...initialData, fat: initialData.fats ?? initialData.fat ?? '', isScan: false };
 }
+
+const MICRO_FIELDS = [
+  { key: 'potassium', label: 'Potassium mg' },
+  { key: 'calcium', label: 'Calcium mg' },
+  { key: 'iron', label: 'Iron mg' },
+  { key: 'magnesium', label: 'Magnesium mg' },
+  { key: 'zinc', label: 'Zinc mg' },
+  { key: 'vitA', label: 'Vit A mcg' },
+  { key: 'vitC', label: 'Vit C mg' },
+  { key: 'vitD', label: 'Vit D mcg' },
+  { key: 'vitB12', label: 'B12 mcg' },
+];
 
 export default function ManualEntry({ onAdd, initialData, onClose }) {
   const editingLog = normalizeInitialData(initialData);
@@ -38,6 +59,10 @@ export default function ManualEntry({ onAdd, initialData, onClose }) {
   const [sodium, setSodium] = useState(editingLog?.sodium ?? '');
   const [sugar, setSugar] = useState(editingLog?.sugar ?? '');
   const [servings, setServings] = useState('1');
+  const [micros, setMicros] = useState(() =>
+    Object.fromEntries(MICRO_FIELDS.map(f => [f.key, editingLog?.[f.key] ?? '']))
+  );
+  const [showMicros, setShowMicros] = useState(false);
   const [results, setResults] = useState([]);
   const searchRef = useRef(null);
 
@@ -85,6 +110,15 @@ export default function ManualEntry({ onAdd, initialData, onClose }) {
               fiber: pick('fiber'),
               sodium: pick('sodium') * 1000, // OFF sodium is grams → mg
               sugar: pick('sugars'),
+              potassium: pick('potassium') * 1000, // OFF minerals are grams → mg
+              calcium: pick('calcium') * 1000,
+              iron: pick('iron') * 1000,
+              magnesium: pick('magnesium') * 1000,
+              zinc: pick('zinc') * 1000,
+              vitA: pick('vitamin-a') * 1e6, // OFF vitamins are grams → mcg
+              vitC: pick('vitamin-c') * 1000, // → mg
+              vitD: pick('vitamin-d') * 1e6,
+              vitB12: pick('vitamin-b12') * 1e6,
               source: 'Global',
             };
           })
@@ -104,10 +138,11 @@ export default function ManualEntry({ onAdd, initialData, onClose }) {
     setCalories(item.calories ?? '');
     setProtein(item.protein ?? '');
     setCarbs(item.carbs ?? '');
-    setFat(item.fat ?? '');
+    setFat(item.fats ?? item.fat ?? '');
     setFiber(item.fiber ?? '');
     setSodium(item.sodium ?? '');
     setSugar(item.sugar ?? '');
+    setMicros(Object.fromEntries(MICRO_FIELDS.map(f => [f.key, item[f.key] ?? ''])));
     setResults([]);
   };
 
@@ -125,6 +160,7 @@ export default function ManualEntry({ onAdd, initialData, onClose }) {
       fiber: scale(fiber),
       sodium: scale(sodium),
       sugar: scale(sugar),
+      ...Object.fromEntries(MICRO_FIELDS.map(f => [f.key, scale(micros[f.key])])),
     });
     onClose();
   };
@@ -249,6 +285,33 @@ export default function ManualEntry({ onAdd, initialData, onClose }) {
               <input type="number" min="0" step="0.1" value={sugar} onChange={(e) => setSugar(e.target.value)} className={inputClass} placeholder="0" />
             </div>
           </div>
+
+          <button
+            type="button"
+            onClick={() => setShowMicros(s => !s)}
+            className="w-full text-left text-xs font-semibold text-zinc-400 hover:text-emerald-400 transition-colors"
+          >
+            {showMicros ? '▾' : '▸'} More nutrients {Object.values(micros).some(v => v !== '' && Number(v) > 0) ? '·' : '(optional)'}
+          </button>
+
+          {showMicros && (
+            <div className="grid grid-cols-3 gap-3">
+              {MICRO_FIELDS.map(f => (
+                <div key={f.key}>
+                  <label className="block text-[10px] text-zinc-400 mb-1">{f.label}</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={micros[f.key]}
+                    onChange={e => setMicros(m => ({ ...m, [f.key]: e.target.value }))}
+                    className={inputClass}
+                    placeholder="0"
+                  />
+                </div>
+              ))}
+            </div>
+          )}
 
           <button
             type="submit"

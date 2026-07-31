@@ -83,6 +83,33 @@ export function getDailyBalances(dates, tdee) {
   });
 }
 
+// Canonical micronutrient list: log-entry key, display label, unit, daily
+// reference amount, and whether the target is a limit (stay under) or a goal.
+export const MICRONUTRIENTS = [
+  { key: 'fiber', label: 'Fiber', unit: 'g', rda: 38 },
+  { key: 'sodium', label: 'Sodium', unit: 'mg', rda: 2300, limit: true },
+  { key: 'potassium', label: 'Potassium', unit: 'mg', rda: 3400 },
+  { key: 'sugar', label: 'Sugar', unit: 'g', rda: 50, limit: true },
+  { key: 'calcium', label: 'Calcium', unit: 'mg', rda: 1000 },
+  { key: 'iron', label: 'Iron', unit: 'mg', rda: 8 },
+  { key: 'magnesium', label: 'Magnesium', unit: 'mg', rda: 420 },
+  { key: 'zinc', label: 'Zinc', unit: 'mg', rda: 11 },
+  { key: 'vitA', label: 'Vitamin A', unit: 'mcg', rda: 900 },
+  { key: 'vitC', label: 'Vitamin C', unit: 'mg', rda: 90 },
+  { key: 'vitD', label: 'Vitamin D', unit: 'mcg', rda: 20 },
+  { key: 'vitB12', label: 'Vitamin B12', unit: 'mcg', rda: 2.4 },
+];
+
+// Daily totals of one nutrient key across the given dates (food logs only)
+export function getDailyNutrientTotals(dates, key) {
+  const byDate = {};
+  for (const l of storage.getLogs()) {
+    if (!l.date || l.source === 'AppleHealth') continue;
+    byDate[l.date] = (byDate[l.date] ?? 0) + (Number(l[key]) || 0);
+  }
+  return dates.map(date => ({ date, value: Math.round((byDate[date] ?? 0) * 10) / 10 }));
+}
+
 export function getMealBucket(hour) {
   if (hour < 10) return 'Breakfast';
   if (hour < 14) return 'Lunch';

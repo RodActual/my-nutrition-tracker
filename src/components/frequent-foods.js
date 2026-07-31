@@ -14,15 +14,11 @@ export default function FrequentFoods({ onAdd = () => {} }) {
   if (!items.length) return null;
 
   const handleTap = (item) => {
+    // Pass every nutrient the original entry carried (micros included)
+    const { id, date, timestamp, logCount, source, ...nutrients } = item;
     onAdd({
-      name: item.name,
-      calories: item.calories,
-      protein: item.protein,
-      carbs: item.carbs,
+      ...nutrients,
       fat: item.fats ?? item.fat ?? 0,
-      fiber: item.fiber ?? 0,
-      sodium: item.sodium ?? 0,
-      sugar: item.sugar ?? 0,
       timestamp: new Date().toISOString(),
       source: 'Frequent',
     });

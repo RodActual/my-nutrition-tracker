@@ -23,6 +23,7 @@ import EnergyBalanceChart from './charts/energy-balance-chart';
 import MacroTrendChart from './charts/macro-trend-chart';
 import ActivityChart from './charts/activity-chart';
 import WaterChart from './charts/water-chart';
+import NutrientExplorerChart from './charts/nutrient-explorer-chart';
 import WaterTracker from './water-tracker';
 import WeeklyReport from './weekly-report';
 
@@ -290,6 +291,7 @@ export default function Dashboard() {
             <MacroTrendChart days={trendRange} targets={userData?.targets} />
             <ActivityChart days={trendRange} />
             <WaterChart days={trendRange} waterGoal={userData?.profile?.waterGoalOz} />
+            <NutrientExplorerChart days={trendRange} />
             <WeeklyReport profile={userData?.profile} />
           </div>
         )}
