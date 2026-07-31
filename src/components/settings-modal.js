@@ -232,6 +232,7 @@ export default function SettingsModal({ currentProfile, onClose }) {
             setProtein(String(result.protein));
             setCarbs(String(result.carbs));
             setFat(String(result.fat));
+            setWater(String(result.water));
           }}
           className="mt-5 w-full flex items-center justify-center gap-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-emerald-400 text-sm font-medium rounded-xl py-3 transition-colors"
         >

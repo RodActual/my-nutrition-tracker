@@ -32,7 +32,10 @@ export function calculateTargets(profile) {
   const proteinG = Math.round(w * 0.9);
   const fatG = Math.round((goalCalories * 0.25) / 9);
   const carbsG = Math.round((goalCalories - proteinG * 4 - fatG * 9) / 4);
-  return { calories: goalCalories, protein: proteinG, carbs: Math.max(carbsG, 0), fat: fatG };
+  // Water: half bodyweight (lbs) in oz, plus a bump for higher activity
+  const activityBump = { active: 8, very_active: 16 }[profile.activityLevel] ?? 0;
+  const waterOz = Math.round(w * 0.5 + activityBump);
+  return { calories: goalCalories, protein: proteinG, carbs: Math.max(carbsG, 0), fat: fatG, water: waterOz };
 }
 
 export function toDateStr(d) {
