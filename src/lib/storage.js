@@ -16,13 +16,83 @@ function read(key, fallback) {
   } catch { return fallback; }
 }
 
+const SYNC_CODE_KEY = 'nt_sync_code';
+const UPDATED_KEY = 'nt_updated';
+let pushTimer = null;
+let syncSuspended = false; // true while applying a remote snapshot
+
 function write(key, value) {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(key, JSON.stringify(value));
+    if (!syncSuspended) {
+      localStorage.setItem(UPDATED_KEY, String(Date.now()));
+      schedulePush();
+    }
   } catch {
     console.warn('localStorage write failed (quota exceeded?)');
   }
+}
+
+function schedulePush() {
+  if (typeof window === 'undefined') return;
+  if (!localStorage.getItem(SYNC_CODE_KEY)) return;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(() => { pushAllData().catch(() => {}); }, 2000);
+}
+
+// Push the full local snapshot to the server (device → cloud)
+export async function pushAllData() {
+  const code = typeof window !== 'undefined' && localStorage.getItem(SYNC_CODE_KEY);
+  if (!code) return false;
+  const data = { updatedAt: Number(localStorage.getItem(UPDATED_KEY)) || Date.now() };
+  for (const k of Object.values(KEYS)) {
+    const v = read(k, null);
+    if (v != null) data[k] = v;
+  }
+  const res = await fetch('/api/data-sync', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-sync-code': code },
+    body: JSON.stringify(data),
+  });
+  return res.ok;
+}
+
+// Pull the cloud snapshot and apply it if newer than local (cloud → device).
+// Returns 'applied', 'local-newer', 'empty', or 'error'.
+export async function pullRemoteData() {
+  const code = typeof window !== 'undefined' && localStorage.getItem(SYNC_CODE_KEY);
+  if (!code) return 'error';
+  try {
+    const res = await fetch('/api/data-sync', { headers: { 'x-sync-code': code }, cache: 'no-store' });
+    if (!res.ok) return 'error';
+    const { data: remote } = await res.json();
+    if (!remote?.updatedAt) return 'empty';
+    const localUpdated = Number(localStorage.getItem(UPDATED_KEY)) || 0;
+    if (remote.updatedAt <= localUpdated) return 'local-newer';
+    syncSuspended = true;
+    try {
+      for (const k of Object.values(KEYS)) {
+        if (remote[k] != null) write(k, remote[k]);
+      }
+      localStorage.setItem(UPDATED_KEY, String(remote.updatedAt));
+    } finally {
+      syncSuspended = false;
+    }
+    return 'applied';
+  } catch {
+    return 'error';
+  }
+}
+
+export function getSyncCode() {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem(SYNC_CODE_KEY);
+}
+
+export function setSyncCode(code) {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(SYNC_CODE_KEY, code);
 }
 
 function uid() {

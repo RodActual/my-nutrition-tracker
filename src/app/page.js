@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Dashboard from '@/components/dashboard';
-import { storage } from '@/lib/storage';
+import SyncLogin from '@/components/sync-login';
+import { storage, getSyncCode, pullRemoteData } from '@/lib/storage';
 
 async function syncHealthData() {
   try {
@@ -58,17 +59,33 @@ async function syncHealthData() {
 }
 
 export default function Home() {
-  const [ready, setReady] = useState(false);
+  const [phase, setPhase] = useState('loading'); // loading | login | ready
 
   useEffect(() => {
-    syncHealthData().finally(() => setReady(true));
+    if (!getSyncCode()) {
+      setPhase('login');
+      return;
+    }
+    pullRemoteData()
+      .then(() => syncHealthData())
+      .finally(() => setPhase('ready'));
   }, []);
 
-  if (!ready) {
+  if (phase === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-zinc-950">
         <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
       </div>
+    );
+  }
+
+  if (phase === 'login') {
+    return (
+      <SyncLogin
+        onDone={() => {
+          syncHealthData().finally(() => setPhase('ready'));
+        }}
+      />
     );
   }
 
