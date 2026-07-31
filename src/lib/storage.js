@@ -55,7 +55,26 @@ export async function pushAllData() {
     headers: { 'Content-Type': 'application/json', 'x-sync-code': code },
     body: JSON.stringify(data),
   });
+  if (res.ok) localStorage.setItem('nt_last_sync', String(Date.now()));
   return res.ok;
+}
+
+export function getLastSync() {
+  if (typeof window === 'undefined') return null;
+  const t = Number(localStorage.getItem('nt_last_sync'));
+  return t || null;
+}
+
+export function clearSyncCode() {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(SYNC_CODE_KEY);
+}
+
+// Everything the app stores, as one exportable object
+export function exportAllData() {
+  const out = { exportedAt: new Date().toISOString() };
+  for (const [name, key] of Object.entries(KEYS)) out[name] = read(key, null);
+  return out;
 }
 
 // Pull the cloud snapshot and apply it if newer than local (cloud → device).
@@ -79,6 +98,7 @@ export async function pullRemoteData() {
     } finally {
       syncSuspended = false;
     }
+    localStorage.setItem('nt_last_sync', String(Date.now()));
     return 'applied';
   } catch {
     return 'error';

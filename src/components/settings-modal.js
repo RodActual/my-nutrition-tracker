@@ -1,9 +1,83 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Sparkles } from 'lucide-react';
-import { storage } from '@/lib/storage';
+import { X, Sparkles, Cloud, Download, LogOut } from 'lucide-react';
+import {
+  storage, pushAllData, pullRemoteData, getLastSync, clearSyncCode, exportAllData,
+} from '@/lib/storage';
 import { calculateTargets } from '@/lib/trends';
+
+function SyncSection() {
+  const [lastSync, setLastSync] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => { setLastSync(getLastSync()); }, []);
+
+  const syncNow = async () => {
+    setBusy(true);
+    try {
+      await pullRemoteData();
+      await pushAllData();
+      setLastSync(getLastSync());
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const exportData = () => {
+    const blob = new Blob([JSON.stringify(exportAllData(), null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `nutritrack-export-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const logOut = () => {
+    if (!window.confirm('Log out of sync? Your data stays on this device and in the cloud — you\'ll just need your sync code to reconnect.')) return;
+    clearSyncCode();
+    window.location.reload();
+  };
+
+  return (
+    <>
+      <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-3 mt-6">Sync & Backup</p>
+      <div className="bg-zinc-800/50 border border-zinc-800 rounded-2xl p-4 space-y-3">
+        <div className="flex items-center gap-2 text-xs text-zinc-400">
+          <Cloud size={14} className="text-emerald-400" aria-hidden="true" />
+          {lastSync
+            ? `Last synced ${new Date(lastSync).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`
+            : 'Not synced yet'}
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          <button
+            type="button"
+            onClick={syncNow}
+            disabled={busy}
+            className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 disabled:opacity-50 text-emerald-400 text-xs font-semibold rounded-xl py-2.5"
+          >
+            {busy ? 'Syncing…' : 'Sync now'}
+          </button>
+          <button
+            type="button"
+            onClick={exportData}
+            className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-slate-200 text-xs font-semibold rounded-xl py-2.5 flex items-center justify-center gap-1.5"
+          >
+            <Download size={13} aria-hidden="true" /> Export
+          </button>
+          <button
+            type="button"
+            onClick={logOut}
+            className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-red-400 text-xs font-semibold rounded-xl py-2.5 flex items-center justify-center gap-1.5"
+          >
+            <LogOut size={13} aria-hidden="true" /> Log out
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
 
 export default function SettingsModal({ currentProfile, onClose }) {
   const [name, setName] = useState(currentProfile?.name ?? '');
@@ -220,6 +294,8 @@ export default function SettingsModal({ currentProfile, onClose }) {
             />
           </div>
         </div>
+
+        <SyncSection />
 
         <button
           onClick={handleSave}

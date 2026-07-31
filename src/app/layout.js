@@ -4,6 +4,10 @@ export const metadata = {
   title: 'NutriTrack',
   description: 'Track calories and macros easily.',
   manifest: '/manifest.json',
+  icons: {
+    icon: '/icon-192.png',
+    apple: '/apple-touch-icon.png',
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
