@@ -9,6 +9,7 @@ export default function BarcodeScanner({ onResult, onClose }) {
   const [error, setError] = useState(null);
   const scannerRef = useRef(null);
   const isScanningRef = useRef(false);
+  const restartRef = useRef(null);
 
   const onResultRef = useRef(onResult);
   const onCloseRef = useRef(onClose);
@@ -75,6 +76,15 @@ export default function BarcodeScanner({ onResult, onClose }) {
 
     startScanner();
 
+    // Restarting the scanner stream forces the camera to re-run autofocus
+    restartRef.current = async () => {
+      if (isScanningRef.current) {
+        isScanningRef.current = false;
+        try { await html5QrCode.stop(); } catch { /* already stopped */ }
+      }
+      await startScanner();
+    };
+
     return () => {
       if (isScanningRef.current) {
         isScanningRef.current = false;
@@ -121,9 +131,17 @@ export default function BarcodeScanner({ onResult, onClose }) {
           </button>
         </div>
       ) : (
-        <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-8">
-          Align barcode within frame
-        </p>
+        <div className="flex flex-col items-center gap-4 mt-8">
+          <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">
+            Align barcode within frame
+          </p>
+          <button
+            onClick={() => restartRef.current?.()}
+            className="bg-white/10 border border-white/20 rounded-2xl font-black text-white/80 text-xs uppercase tracking-widest px-6 py-3 active:scale-95 transition-all"
+          >
+            Refocus Camera
+          </button>
+        </div>
       )}
     </div>
   );

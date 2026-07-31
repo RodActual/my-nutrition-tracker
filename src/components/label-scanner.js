@@ -10,34 +10,44 @@ export default function LabelScanner({ onResult, onClose }) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
 
+  const streamRef = useRef(null);
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    if (videoRef.current) videoRef.current.srcObject = null;
+  };
+
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'environment',
+          // Hint continuous autofocus where the browser supports it
+          advanced: [{ focusMode: 'continuous' }],
+        },
+      });
+      streamRef.current = stream;
+      if (videoRef.current) videoRef.current.srcObject = stream;
+    } catch (err) {
+      console.error("Camera error:", err);
+      setError("Camera access denied. Please allow camera permissions and try again.");
+    }
+  };
+
+  // Restarting the stream forces the camera to re-run autofocus
+  const refocus = async () => {
+    setError(null);
+    stopCamera();
+    await startCamera();
+  };
+
   useEffect(() => {
-    const currentVideoRef = videoRef.current;
-    let stream = null;
-
-    const startCamera = async () => {
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: 'environment' } 
-        });
-        if (currentVideoRef) {
-          currentVideoRef.srcObject = stream;
-        }
-      } catch (err) {
-        console.error("Camera error:", err);
-        setError("Camera access denied. Please allow camera permissions and try again.");
-      }
-    };
-
     startCamera();
-
-    return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
-      if (currentVideoRef) {
-        currentVideoRef.srcObject = null;
-      }
-    };
+    return stopCamera;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const captureAndScan = async () => {
@@ -165,11 +175,17 @@ export default function LabelScanner({ onResult, onClose }) {
           </div>
         ) : (
           <>
-            <button 
-              onClick={captureAndScan} 
+            <button
+              onClick={captureAndScan}
               className="w-full h-16 bg-white rounded-2xl font-black text-black uppercase tracking-widest active:scale-95 transition-all shadow-xl"
             >
               Analyze Facts
+            </button>
+            <button
+              onClick={refocus}
+              className="w-full h-12 bg-white/10 border border-white/20 rounded-2xl font-black text-white/80 text-xs uppercase tracking-widest active:scale-95 transition-all"
+            >
+              Refocus Camera
             </button>
             <button 
               onClick={onClose} 
