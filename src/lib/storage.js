@@ -215,6 +215,12 @@ export const storage = {
     pushDayToServer(date);
     return entry;
   },
+  deleteWeightLog: (id) => {
+    const all = read(KEYS.weights, []);
+    const entry = all.find(w => w.id === id);
+    write(KEYS.weights, all.filter(w => w.id !== id));
+    if (entry?.date) pushDayToServer(entry.date);
+  },
 
   // Steps (synced from Apple Health via health-sync)
   getSteps: (date) => {

@@ -18,6 +18,7 @@ import StreakCard from './streak-card';
 import ActivitySummary from './activity-summary';
 import WaterQuickLog from './water-quick-log';
 import WeighInCard from './weigh-in-card';
+import WeightHistory from './weight-history';
 import GoalCelebration from './goal-celebration';
 import TimeRangeSelector from './time-range-selector';
 import WeightTrendChart from './charts/weight-trend-chart';
@@ -296,6 +297,7 @@ export default function Dashboard() {
           <div className="space-y-4 animate-in fade-in duration-300">
             <TimeRangeSelector value={trendRange} onChange={setTrendRange} />
             <WeightTrendChart days={trendRange} profile={userData?.profile} />
+            <WeightHistory onChanged={loadData} />
             <EnergyBalanceChart days={trendRange} profile={userData?.profile} />
             <MacroTrendChart days={trendRange} targets={userData?.targets} />
             <ActivityChart days={trendRange} />
