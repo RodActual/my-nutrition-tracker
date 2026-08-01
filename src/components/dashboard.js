@@ -23,6 +23,7 @@ import WeightHistory from './weight-history';
 import GoalCelebration from './goal-celebration';
 import TimeRangeSelector from './time-range-selector';
 import WeightTrendChart from './charts/weight-trend-chart';
+import GoalProgressCard from './goal-progress-card';
 import EnergyBalanceChart from './charts/energy-balance-chart';
 import MacroTrendChart from './charts/macro-trend-chart';
 import ActivityChart from './charts/activity-chart';
@@ -215,9 +216,7 @@ export default function Dashboard() {
               </button>
             </div>
 
-            <button onClick={() => setCurrentTab('insights')} className="w-full text-left active:scale-[0.99] transition-transform">
-              <WeightTrendChart days={30} profile={userData?.profile} compact />
-            </button>
+            <GoalProgressCard profile={userData?.profile} onClick={() => setCurrentTab('insights')} />
 
             {userData?.targets && (
               <DailyProgress targets={userData.targets} current={dailyTotals} />
