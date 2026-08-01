@@ -145,7 +145,7 @@ export default function WeightTrendChart({ days = 30, profile, compact = false }
           <Line type="monotone" dataKey="weight" name="Weight" stroke="#10b981" strokeWidth={2}
             dot={{ r: 2.5, fill: '#10b981' }} activeDot={{ r: 4, fill: '#10b981' }} connectNulls />
           <Line type="monotone" dataKey="ma" name="7-day trend" stroke="#71717a" strokeWidth={1} dot={false} connectNulls />
-          <Line type="monotone" dataKey="predicted" name="Predicted" stroke="#10b981" strokeWidth={2}
+          <Line type="monotone" dataKey="predicted" legendType="none" stroke="#10b981" strokeWidth={2}
             strokeDasharray="5 5" strokeOpacity={0.6} dot={false} connectNulls />
         </ComposedChart>
       </ResponsiveContainer>
