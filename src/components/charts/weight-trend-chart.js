@@ -121,7 +121,7 @@ export default function WeightTrendChart({ days = 30, profile, compact = false }
           <XAxis dataKey="label" tick={{ fill: '#a1a1aa', fontSize: 11 }} minTickGap={30} />
           <YAxis
             tick={{ fill: '#a1a1aa', fontSize: 11 }}
-            domain={([min, max]) => (min === max ? [min - 5, max + 5] : ['auto', 'auto'])}
+            domain={['dataMin - 2', 'dataMax + 2']}
             width={35}
           />
           <Tooltip content={<ChartTooltip />} />
