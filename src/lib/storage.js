@@ -131,6 +131,28 @@ function uid() {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+// Every numeric field a log entry can carry. Form inputs and scanned/imported
+// data arrive as strings; if even one slips through, the daily `+=` reduces
+// become string concatenation and the whole day renders as NaN.
+const NUMERIC_LOG_FIELDS = [
+  'calories', 'protein', 'carbs', 'fats', 'fat', 'fiber', 'sodium', 'sugar',
+  'potassium', 'calcium', 'iron', 'magnesium', 'zinc', 'vitA', 'vitC', 'vitD', 'vitB12',
+];
+
+function toNum(v) {
+  if (v == null || v === '') return 0;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function normalizeLog(log) {
+  const out = { ...log };
+  for (const f of NUMERIC_LOG_FIELDS) {
+    if (f in out) out[f] = toNum(out[f]);
+  }
+  return out;
+}
+
 // Fire-and-forget push of a day's totals to the server so Apple Shortcuts can sync to Apple Health
 function pushDayToServer(date) {
   if (typeof window === 'undefined') return;
@@ -173,19 +195,22 @@ export const storage = {
 
   // Food logs
   getLogs: (date) => {
-    const all = read(KEYS.logs, []);
+    // Normalize on read as well as write: entries created before this guard
+    // existed, or pulled from the cloud, may still carry string numerics.
+    const all = read(KEYS.logs, []).map(normalizeLog);
     return date ? all.filter(l => l.date === date) : all;
   },
   addLog: (log) => {
     const all = read(KEYS.logs, []);
-    const entry = { ...log, id: uid(), timestamp: log.timestamp || new Date().toISOString() };
+    const entry = { ...normalizeLog(log), id: uid(), timestamp: log.timestamp || new Date().toISOString() };
     write(KEYS.logs, [entry, ...all]);
     pushDayToServer(entry.date);
     return entry;
   },
   updateLog: (id, data) => {
     const all = read(KEYS.logs, []);
-    const updated = all.map(l => l.id === id ? { ...l, ...data } : l);
+    const clean = normalizeLog(data);
+    const updated = all.map(l => l.id === id ? { ...l, ...clean } : l);
     write(KEYS.logs, updated);
     const date = (updated.find(l => l.id === id) ?? data).date;
     if (date) pushDayToServer(date);
@@ -217,7 +242,13 @@ export const storage = {
   },
 
   // Weight logs
-  getWeightLogs: () => read(KEYS.weights, []),
+  // Drop entries whose weight isn't a usable positive number — a single bad
+  // record (non-numeric, zero, or NaN) otherwise corrupts the trend line,
+  // moving average, and projection math.
+  getWeightLogs: () => read(KEYS.weights, []).filter(w => {
+    const n = Number(w?.weight);
+    return w?.date && Number.isFinite(n) && n > 0;
+  }),
   addWeightLog: ({ weight, date }) => {
     const all = read(KEYS.weights, []).filter(w => w.date !== date);
     const rounded = Math.round(Number(weight) * 10) / 10;
