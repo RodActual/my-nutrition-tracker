@@ -184,7 +184,10 @@ export default function Dashboard() {
     <main className="min-h-screen bg-[var(--bg)] pb-24">
       <WeightReminderBanner onSaved={loadData} />
 
-      <header className="px-5 pt-12 pb-4 flex justify-between items-center">
+      <header
+        className="px-5 pb-4 flex justify-between items-center"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 2.5rem)' }}
+      >
         <h1 className="text-lg font-black text-[var(--text-primary)]">
           {currentTab === 'home' ? 'My Day' : currentTab === 'add' ? 'Log Food' : 'Trends'}
         </h1>
