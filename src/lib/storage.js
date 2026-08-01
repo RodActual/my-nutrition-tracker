@@ -9,11 +9,21 @@ const KEYS = {
   recipes: 'nt_recipes',
 };
 
+// In-memory cache so repeated reads of the same key within a render cycle
+// don't re-parse a multi-thousand-entry JSON blob from localStorage each time.
+// Every mutation path goes through write() (never mutates a read() result in
+// place — always filter/map/spread into a new array), which keeps this cache
+// coherent: write() updates it atomically alongside localStorage.
+const readCache = new Map();
+
 function read(key, fallback) {
   if (typeof window === 'undefined') return fallback;
+  if (readCache.has(key)) return readCache.get(key);
   try {
     const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
+    const value = raw ? JSON.parse(raw) : fallback;
+    readCache.set(key, value);
+    return value;
   } catch { return fallback; }
 }
 
@@ -26,6 +36,7 @@ function write(key, value) {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(key, JSON.stringify(value));
+    readCache.set(key, value);
     if (!syncSuspended) {
       localStorage.setItem(UPDATED_KEY, String(Date.now()));
       schedulePush();
