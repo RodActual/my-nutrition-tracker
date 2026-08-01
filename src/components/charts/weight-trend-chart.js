@@ -37,7 +37,9 @@ export default function WeightTrendChart({ days = 30, profile, compact = false }
       'weight'
     );
 
-    const projection = profile ? getProjection({ profile }) : null;
+    // Cap the projection so history keeps at least half the chart width
+    const projDays = Math.max(14, Math.min(60, days === 0 ? 60 : days));
+    const projection = profile ? getProjection({ profile, daysOut: projDays }) : null;
     if (projection && inRange.length) {
       const projPoints = projection.points.map(p => ({
         date: p.date, label: formatShortDate(p.date), weight: null, ma: null, predicted: p.predicted,

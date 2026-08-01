@@ -28,7 +28,7 @@ export default function DailyProgress({ targets, current }) {
       <div className="space-y-3">
         <MacroBar label="Protein" current={current.protein} target={targets.protein} color="bg-rose-500" />
         <MacroBar label="Carbs" current={current.carbs} target={targets.carbs} color="bg-emerald-500" />
-        <MacroBar label="Fats" current={current.fats} target={targets.fats} color="bg-amber-400" />
+        <MacroBar label="Fats" current={current.fats} target={targets.fat ?? targets.fats} color="bg-amber-400" />
       </div>
     </div>
   );
