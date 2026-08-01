@@ -25,18 +25,18 @@ export default function WeightHistory({ onChanged }) {
   if (!logs.length) return null;
 
   return (
-    <div className="bg-zinc-900 rounded-3xl border border-zinc-800 p-5">
+    <div className="bg-[var(--surface)] rounded-3xl border border-[var(--border)] p-5">
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
         className="w-full flex items-center justify-between"
       >
         <div className="flex items-center gap-2">
-          <List size={14} className="text-emerald-400" aria-hidden="true" />
-          <p className="text-sm font-semibold text-slate-100">Weigh-in History</p>
-          <span className="text-[10px] font-bold text-zinc-500">({logs.length})</span>
+          <List size={14} className="text-[var(--accent)]" aria-hidden="true" />
+          <p className="text-sm font-semibold text-[var(--text-primary)]">Weigh-in History</p>
+          <span className="text-[10px] font-bold text-[var(--text-tertiary)]">({logs.length})</span>
         </div>
-        <span className="text-xs text-zinc-500">{open ? '▾' : '▸'}</span>
+        <span className="text-xs text-[var(--text-tertiary)]">{open ? '▾' : '▸'}</span>
       </button>
 
       {open && (
@@ -44,17 +44,17 @@ export default function WeightHistory({ onChanged }) {
           {logs.map(log => (
             <div
               key={log.id}
-              className="flex items-center justify-between bg-zinc-800/50 rounded-xl px-3 py-2"
+              className="flex items-center justify-between bg-[var(--surface-2)]/50 rounded-xl px-3 py-2"
             >
               <div className="flex items-baseline gap-3">
-                <span className="text-sm font-bold text-slate-100">{log.weight} lbs</span>
-                <span className="text-xs text-zinc-500">{formatShortDate(log.date)}</span>
+                <span className="text-sm font-bold text-[var(--text-primary)]">{log.weight} lbs</span>
+                <span className="text-xs text-[var(--text-tertiary)]">{formatShortDate(log.date)}</span>
               </div>
               <button
                 type="button"
                 onClick={() => remove(log.id, log.date)}
                 aria-label={`Delete weigh-in from ${formatShortDate(log.date)}`}
-                className="p-1 text-zinc-500 hover:text-rose-400 transition-colors"
+                className="p-1 text-[var(--text-tertiary)] hover:text-rose-400 transition-colors"
               >
                 <Trash2 size={14} />
               </button>

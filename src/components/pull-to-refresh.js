@@ -62,10 +62,10 @@ export default function PullToRefresh({ children }) {
           className="fixed left-0 right-0 flex justify-center z-[80] pointer-events-none transition-transform"
           style={{ top: `calc(env(safe-area-inset-top) + 8px)`, transform: `translateY(${Math.min(pull, 90) - 40}px)` }}
         >
-          <div className={`p-2.5 rounded-full border shadow-xl ${armed || refreshing ? 'bg-emerald-500 border-emerald-400' : 'bg-zinc-800 border-zinc-700'}`}>
+          <div className={`p-2.5 rounded-full border shadow-xl ${armed || refreshing ? 'bg-[var(--accent)] border-[var(--accent-hover)]' : 'bg-[var(--surface-2)] border-[var(--border-2)]'}`}>
             <LoaderCircle
               size={18}
-              className={refreshing ? 'text-zinc-950 animate-spin' : armed ? 'text-zinc-950' : 'text-zinc-400'}
+              className={refreshing ? 'text-zinc-950 animate-spin' : armed ? 'text-zinc-950' : 'text-[var(--text-secondary)]'}
               style={!refreshing ? { transform: `rotate(${pull * 3}deg)` } : undefined}
               aria-hidden="true"
             />

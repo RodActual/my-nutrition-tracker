@@ -1,12 +1,56 @@
 @import "tailwindcss";
 
+:root {
+  color-scheme: dark;
+}
+
+/* Background/surface/text hierarchy per mode */
+:root,
+[data-mode="dark"] {
+  --bg: #09090b;
+  --surface: #18181b;
+  --surface-2: #27272a;
+  --border: #27272a;
+  --border-2: #3f3f46;
+  --text-primary: #f1f5f9;
+  --text-secondary: #a1a1aa;
+  --text-tertiary: #71717a;
+  --grid-line: #3f3f46;
+  --axis-text: #a1a1aa;
+  --surface-translucent: rgba(24, 24, 27, 0.95);
+}
+
+[data-mode="light"] {
+  color-scheme: light;
+  --bg: #fafafa;
+  --surface: #ffffff;
+  --surface-2: #f4f4f5;
+  --border: #e4e4e7;
+  --border-2: #d4d4d8;
+  --text-primary: #18181b;
+  --text-secondary: #52525b;
+  --text-tertiary: #71717a;
+  --grid-line: #e4e4e7;
+  --axis-text: #52525b;
+  --surface-translucent: rgba(255, 255, 255, 0.95);
+}
+
+/* Accent — the app's single brand color, swappable independent of mode.
+   Each accent defines a 500-ish base, a lighter hover, and translucent tints. */
+[data-accent="emerald"] { --accent: #10b981; --accent-hover: #34d399; --accent-soft: rgba(16,185,129,0.10); --accent-border: rgba(16,185,129,0.20); }
+[data-accent="blue"]    { --accent: #3b82f6; --accent-hover: #60a5fa; --accent-soft: rgba(59,130,246,0.10); --accent-border: rgba(59,130,246,0.20); }
+[data-accent="violet"]  { --accent: #8b5cf6; --accent-hover: #a78bfa; --accent-soft: rgba(139,92,246,0.10); --accent-border: rgba(139,92,246,0.20); }
+[data-accent="rose"]    { --accent: #f43f5e; --accent-hover: #fb7185; --accent-soft: rgba(244,63,94,0.10); --accent-border: rgba(244,63,94,0.20); }
+[data-accent="amber"]   { --accent: #f59e0b; --accent-hover: #fbbf24; --accent-soft: rgba(245,158,11,0.10); --accent-border: rgba(245,158,11,0.20); }
+[data-accent="teal"]    { --accent: #14b8a6; --accent-hover: #2dd4bf; --accent-soft: rgba(20,184,166,0.10); --accent-border: rgba(20,184,166,0.20); }
+
 html {
-  background-color: #09090b;
+  background-color: var(--bg);
 }
 
 body {
-  background-color: #09090b;
-  color: #f1f5f9;
+  background-color: var(--bg);
+  color: var(--text-primary);
   font-family: Arial, Helvetica, sans-serif;
   -webkit-font-smoothing: antialiased;
 }

@@ -1,11 +1,76 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Sparkles, Cloud, Download, LogOut } from 'lucide-react';
+import { X, Sparkles, Cloud, Download, LogOut, Palette } from 'lucide-react';
 import {
   storage, pushAllData, pullRemoteData, getLastSync, clearSyncCode, exportAllData,
 } from '@/lib/storage';
 import { calculateTargets, HEALTH_PROFILES, getGoalMode, getDefaultRate } from '@/lib/trends';
+import { ACCENTS, getStoredMode, getStoredAccent, setMode, setAccent } from '@/lib/theme';
+
+const MODES = [
+  { id: 'system', label: 'System' },
+  { id: 'light', label: 'Light' },
+  { id: 'dark', label: 'Dark' },
+];
+
+function AppearanceSection() {
+  const [mode, setModeState] = useState('system');
+  const [accent, setAccentState] = useState('emerald');
+
+  useEffect(() => {
+    setModeState(getStoredMode());
+    setAccentState(getStoredAccent());
+  }, []);
+
+  return (
+    <>
+      <p className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] mb-3 mt-6">Appearance</p>
+      <div className="bg-[var(--surface-2)]/50 border border-[var(--border)] rounded-2xl p-4 space-y-4">
+        <div>
+          <div className="flex items-center gap-2 mb-2 text-xs text-[var(--text-secondary)]">
+            <Palette size={14} className="text-[var(--accent)]" aria-hidden="true" />
+            Theme
+          </div>
+          <div className="flex gap-1 bg-[var(--surface)] border border-[var(--border-2)] rounded-xl p-1">
+            {MODES.map(m => (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => { setModeState(m.id); setMode(m.id); }}
+                className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
+                  mode === m.id ? 'bg-[var(--accent)] text-zinc-950' : 'text-[var(--text-secondary)]'
+                }`}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <p className="text-xs text-[var(--text-secondary)] mb-2">Accent Color</p>
+          <div className="flex gap-2">
+            {ACCENTS.map(a => (
+              <button
+                key={a.id}
+                type="button"
+                onClick={() => { setAccentState(a.id); setAccent(a.id); }}
+                aria-label={a.label}
+                className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+                style={{
+                  backgroundColor: a.swatch,
+                  boxShadow: accent === a.id ? `0 0 0 2px var(--surface), 0 0 0 4px ${a.swatch}` : 'none',
+                }}
+              >
+                {accent === a.id && <span className="w-2 h-2 bg-white rounded-full" />}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
 
 const LOSE_RATES = [0.5, 1.0, 1.5, 2.0];
 const GAIN_RATES = [0.25, 0.5, 0.75, 1.0];
@@ -16,8 +81,8 @@ function GoalPaceSection({ weight, goalWeight, rate, setRate }) {
   if (mode === 'maintain') {
     return (
       <div>
-        <label className="block text-xs text-zinc-400 mb-1">Goal Pace</label>
-        <p className="text-sm text-zinc-300 bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3">
+        <label className="block text-xs text-[var(--text-secondary)] mb-1">Goal Pace</label>
+        <p className="text-sm text-[var(--text-secondary)] bg-[var(--surface-2)] border border-[var(--border-2)] rounded-xl px-4 py-3">
           Maintaining current weight
         </p>
       </div>
@@ -31,7 +96,7 @@ function GoalPaceSection({ weight, goalWeight, rate, setRate }) {
 
   return (
     <div>
-      <label className="block text-xs text-zinc-400 mb-1">
+      <label className="block text-xs text-[var(--text-secondary)] mb-1">
         Target pace ({mode === 'lose' ? 'losing' : 'gaining'})
       </label>
       <div className="flex gap-2">
@@ -42,15 +107,15 @@ function GoalPaceSection({ weight, goalWeight, rate, setRate }) {
             onClick={() => setRate(r)}
             className={`flex-1 py-2.5 rounded-xl text-xs font-bold border transition-all ${
               effectiveRate === r
-                ? 'bg-emerald-500 text-zinc-950 border-emerald-500'
-                : 'bg-zinc-800 text-zinc-400 border-zinc-700'
+                ? 'bg-[var(--accent)] text-zinc-950 border-[var(--accent)]'
+                : 'bg-[var(--surface-2)] text-[var(--text-secondary)] border-[var(--border-2)]'
             }`}
           >
             {r}
           </button>
         ))}
       </div>
-      <p className="text-[10px] text-zinc-500 mt-1">lbs/week</p>
+      <p className="text-[10px] text-[var(--text-tertiary)] mt-1">lbs/week</p>
       {isWarning && (
         <p className={`text-[11px] mt-2 leading-relaxed ${mode === 'lose' ? 'text-red-400' : 'text-amber-400'}`}>
           {mode === 'lose'
@@ -97,10 +162,10 @@ function SyncSection() {
 
   return (
     <>
-      <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-3 mt-6">Sync & Backup</p>
-      <div className="bg-zinc-800/50 border border-zinc-800 rounded-2xl p-4 space-y-3">
-        <div className="flex items-center gap-2 text-xs text-zinc-400">
-          <Cloud size={14} className="text-emerald-400" aria-hidden="true" />
+      <p className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] mb-3 mt-6">Sync & Backup</p>
+      <div className="bg-[var(--surface-2)]/50 border border-[var(--border)] rounded-2xl p-4 space-y-3">
+        <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+          <Cloud size={14} className="text-[var(--accent)]" aria-hidden="true" />
           {lastSync
             ? `Last synced ${new Date(lastSync).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`
             : 'Not synced yet'}
@@ -110,21 +175,21 @@ function SyncSection() {
             type="button"
             onClick={syncNow}
             disabled={busy}
-            className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 disabled:opacity-50 text-emerald-400 text-xs font-semibold rounded-xl py-2.5"
+            className="bg-[var(--surface-2)] hover:bg-[var(--border-2)] border border-[var(--border-2)] disabled:opacity-50 text-[var(--accent)] text-xs font-semibold rounded-xl py-2.5"
           >
             {busy ? 'Syncing…' : 'Sync now'}
           </button>
           <button
             type="button"
             onClick={exportData}
-            className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-slate-200 text-xs font-semibold rounded-xl py-2.5 flex items-center justify-center gap-1.5"
+            className="bg-[var(--surface-2)] hover:bg-[var(--border-2)] border border-[var(--border-2)] text-[var(--text-primary)] text-xs font-semibold rounded-xl py-2.5 flex items-center justify-center gap-1.5"
           >
             <Download size={13} aria-hidden="true" /> Export
           </button>
           <button
             type="button"
             onClick={logOut}
-            className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-red-400 text-xs font-semibold rounded-xl py-2.5 flex items-center justify-center gap-1.5"
+            className="bg-[var(--surface-2)] hover:bg-[var(--border-2)] border border-[var(--border-2)] text-red-400 text-xs font-semibold rounded-xl py-2.5 flex items-center justify-center gap-1.5"
           >
             <LogOut size={13} aria-hidden="true" /> Log out
           </button>
@@ -203,73 +268,73 @@ export default function SettingsModal({ currentProfile, onClose }) {
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-end justify-center z-50">
-      <div className="bg-zinc-900 rounded-t-3xl w-full max-w-lg p-6 pb-10 overflow-y-auto max-h-[85vh]">
+      <div className="bg-[var(--surface)] rounded-t-3xl w-full max-w-lg p-6 pb-10 overflow-y-auto max-h-[85vh]">
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-lg font-semibold text-slate-100">Settings</h2>
-          <button onClick={onClose} className="text-zinc-400 hover:text-slate-100">
+          <h2 className="text-lg font-semibold text-[var(--text-primary)]">Settings</h2>
+          <button onClick={onClose} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
             <X size={20} />
           </button>
         </div>
 
-        <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-3 mt-5">Profile</p>
+        <p className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] mb-3 mt-5">Profile</p>
 
         <div className="space-y-3">
           <div>
-            <label className="block text-xs text-zinc-400 mb-1">Name</label>
+            <label className="block text-xs text-[var(--text-secondary)] mb-1">Name</label>
             <input
               type="text"
               value={name}
               onChange={e => setName(e.target.value)}
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
+              className="w-full bg-[var(--surface-2)] border border-[var(--border-2)] rounded-xl px-4 py-3 text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--accent)]"
             />
           </div>
           <div>
-            <label className="block text-xs text-zinc-400 mb-1">Age</label>
+            <label className="block text-xs text-[var(--text-secondary)] mb-1">Age</label>
             <input
               type="number"
               min="0"
               value={age}
               onChange={e => setAge(e.target.value)}
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
+              className="w-full bg-[var(--surface-2)] border border-[var(--border-2)] rounded-xl px-4 py-3 text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--accent)]"
             />
           </div>
           <div>
-            <label className="block text-xs text-zinc-400 mb-1">Weight (lbs)</label>
+            <label className="block text-xs text-[var(--text-secondary)] mb-1">Weight (lbs)</label>
             <input
               type="number"
               min="0"
               value={weight}
               onChange={e => setWeight(e.target.value)}
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
+              className="w-full bg-[var(--surface-2)] border border-[var(--border-2)] rounded-xl px-4 py-3 text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--accent)]"
             />
           </div>
           <div>
-            <label className="block text-xs text-zinc-400 mb-1">Height (inches)</label>
+            <label className="block text-xs text-[var(--text-secondary)] mb-1">Height (inches)</label>
             <input
               type="number"
               min="0"
               value={height}
               onChange={e => setHeight(e.target.value)}
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
+              className="w-full bg-[var(--surface-2)] border border-[var(--border-2)] rounded-xl px-4 py-3 text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--accent)]"
             />
           </div>
           <div>
-            <label className="block text-xs text-zinc-400 mb-1">Goal Weight (lbs)</label>
+            <label className="block text-xs text-[var(--text-secondary)] mb-1">Goal Weight (lbs)</label>
             <input
               type="number"
               min="0"
               value={goalWeight}
               onChange={e => setGoalWeight(e.target.value)}
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
+              className="w-full bg-[var(--surface-2)] border border-[var(--border-2)] rounded-xl px-4 py-3 text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--accent)]"
             />
           </div>
           <GoalPaceSection weight={weight} goalWeight={goalWeight} rate={goalRate} setRate={setGoalRate} />
           <div>
-            <label className="block text-xs text-zinc-400 mb-1">Activity Level</label>
+            <label className="block text-xs text-[var(--text-secondary)] mb-1">Activity Level</label>
             <select
               value={activityLevel}
               onChange={e => setActivityLevel(e.target.value)}
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
+              className="w-full bg-[var(--surface-2)] border border-[var(--border-2)] rounded-xl px-4 py-3 text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--accent)]"
             >
               <option value="sedentary">Sedentary</option>
               <option value="light">Light</option>
@@ -279,17 +344,17 @@ export default function SettingsModal({ currentProfile, onClose }) {
             </select>
           </div>
           <div>
-            <label className="block text-xs text-zinc-400 mb-1">Health Profile</label>
+            <label className="block text-xs text-[var(--text-secondary)] mb-1">Health Profile</label>
             <select
               value={healthProfile}
               onChange={e => setHealthProfile(e.target.value)}
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
+              className="w-full bg-[var(--surface-2)] border border-[var(--border-2)] rounded-xl px-4 py-3 text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--accent)]"
             >
               {Object.entries(HEALTH_PROFILES).map(([value, label]) => (
                 <option key={value} value={value}>{label}</option>
               ))}
             </select>
-            <p className="text-[10px] text-zinc-500 mt-1">
+            <p className="text-[10px] text-[var(--text-tertiary)] mt-1">
               General guideline-based presets, not medical advice — consult your doctor for personalized targets.
             </p>
           </div>
@@ -309,73 +374,74 @@ export default function SettingsModal({ currentProfile, onClose }) {
             setFat(String(result.fat));
             setWater(String(result.water));
           }}
-          className="mt-5 w-full flex items-center justify-center gap-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-emerald-400 text-sm font-medium rounded-xl py-3 transition-colors"
+          className="mt-5 w-full flex items-center justify-center gap-2 bg-[var(--surface-2)] hover:bg-[var(--border-2)] border border-[var(--border-2)] text-[var(--accent)] text-sm font-medium rounded-xl py-3 transition-colors"
         >
           <Sparkles size={15} aria-hidden="true" />
           Auto-calculate targets
         </button>
 
-        <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-3 mt-5">Daily Targets</p>
-        <p className="text-xs text-zinc-500 -mt-2 mb-3">Auto-calculated or enter manually</p>
+        <p className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] mb-3 mt-5">Daily Targets</p>
+        <p className="text-xs text-[var(--text-tertiary)] -mt-2 mb-3">Auto-calculated or enter manually</p>
 
         <div className="space-y-3">
           <div>
-            <label className="block text-xs text-zinc-400 mb-1">Calories</label>
+            <label className="block text-xs text-[var(--text-secondary)] mb-1">Calories</label>
             <input
               type="number"
               min="0"
               value={calories}
               onChange={e => setCalories(e.target.value)}
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
+              className="w-full bg-[var(--surface-2)] border border-[var(--border-2)] rounded-xl px-4 py-3 text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--accent)]"
             />
           </div>
           <div>
-            <label className="block text-xs text-zinc-400 mb-1">Protein (g)</label>
+            <label className="block text-xs text-[var(--text-secondary)] mb-1">Protein (g)</label>
             <input
               type="number"
               min="0"
               value={protein}
               onChange={e => setProtein(e.target.value)}
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
+              className="w-full bg-[var(--surface-2)] border border-[var(--border-2)] rounded-xl px-4 py-3 text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--accent)]"
             />
           </div>
           <div>
-            <label className="block text-xs text-zinc-400 mb-1">Carbs (g)</label>
+            <label className="block text-xs text-[var(--text-secondary)] mb-1">Carbs (g)</label>
             <input
               type="number"
               min="0"
               value={carbs}
               onChange={e => setCarbs(e.target.value)}
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
+              className="w-full bg-[var(--surface-2)] border border-[var(--border-2)] rounded-xl px-4 py-3 text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--accent)]"
             />
           </div>
           <div>
-            <label className="block text-xs text-zinc-400 mb-1">Fat (g)</label>
+            <label className="block text-xs text-[var(--text-secondary)] mb-1">Fat (g)</label>
             <input
               type="number"
               min="0"
               value={fat}
               onChange={e => setFat(e.target.value)}
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
+              className="w-full bg-[var(--surface-2)] border border-[var(--border-2)] rounded-xl px-4 py-3 text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--accent)]"
             />
           </div>
           <div>
-            <label className="block text-xs text-zinc-400 mb-1">Water (oz)</label>
+            <label className="block text-xs text-[var(--text-secondary)] mb-1">Water (oz)</label>
             <input
               type="number"
               min="0"
               value={water}
               onChange={e => setWater(e.target.value)}
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
+              className="w-full bg-[var(--surface-2)] border border-[var(--border-2)] rounded-xl px-4 py-3 text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--accent)]"
             />
           </div>
         </div>
 
+        <AppearanceSection />
         <SyncSection />
 
         <button
           onClick={handleSave}
-          className="w-full bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-semibold rounded-2xl py-3 mt-6"
+          className="w-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-zinc-950 font-semibold rounded-2xl py-3 mt-6"
         >
           Save
         </button>

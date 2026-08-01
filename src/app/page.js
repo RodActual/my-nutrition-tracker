@@ -79,8 +79,8 @@ export default function Home() {
 
   if (phase === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-950">
-        <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-[var(--bg)]">
+        <div className="w-6 h-6 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }

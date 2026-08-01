@@ -56,7 +56,7 @@ export default function WeightReminderBanner({ onSaved }) {
           value={weight}
           onChange={e => setWeight(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && save()}
-          className="flex-1 bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-slate-100 text-sm focus:outline-none focus:border-amber-500"
+          className="flex-1 bg-[var(--surface-2)] border border-[var(--border-2)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-sm focus:outline-none focus:border-amber-500"
         />
         <button
           type="button"

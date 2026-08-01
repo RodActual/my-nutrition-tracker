@@ -28,15 +28,15 @@ export default function SyncLogin({ onDone }) {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-6">
-      <div className="w-full max-w-sm bg-zinc-900 rounded-3xl border border-zinc-800 p-6">
+    <div className="min-h-screen bg-[var(--bg)] flex items-center justify-center p-6">
+      <div className="w-full max-w-sm bg-[var(--surface)] rounded-3xl border border-[var(--border)] p-6">
         <div className="flex items-center gap-3 mb-2">
-          <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl">
-            <Cloud size={20} className="text-emerald-400" aria-hidden="true" />
+          <div className="p-2.5 bg-[var(--accent-soft)] border border-[var(--accent-border)] rounded-2xl">
+            <Cloud size={20} className="text-[var(--accent)]" aria-hidden="true" />
           </div>
-          <h1 className="text-lg font-black text-slate-100">Sync Code</h1>
+          <h1 className="text-lg font-black text-[var(--text-primary)]">Sync Code</h1>
         </div>
-        <p className="text-xs text-zinc-400 mb-5 leading-relaxed">
+        <p className="text-xs text-[var(--text-secondary)] mb-5 leading-relaxed">
           Pick a private code (like a password) to back up your data and use it on any device.
           Enter the same code elsewhere to load your data there. Don&apos;t lose it — there is no reset.
         </p>
@@ -47,13 +47,13 @@ export default function SyncLogin({ onDone }) {
             placeholder="At least 6 characters"
             value={code}
             onChange={(e) => setCode(e.target.value)}
-            className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
+            className="w-full bg-[var(--surface-2)] border border-[var(--border-2)] rounded-xl px-4 py-3 text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--accent)]"
           />
           {error && <p className="text-xs text-red-400">{error}</p>}
           <button
             type="submit"
             disabled={busy}
-            className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-zinc-950 font-semibold rounded-2xl py-3 flex items-center justify-center gap-2"
+            className="w-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:opacity-50 text-zinc-950 font-semibold rounded-2xl py-3 flex items-center justify-center gap-2"
           >
             {busy && <LoaderCircle size={15} className="animate-spin" aria-hidden="true" />}
             {busy ? 'Syncing…' : 'Continue'}

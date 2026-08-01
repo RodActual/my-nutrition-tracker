@@ -30,13 +30,13 @@ const MEAL_ORDER = ['Breakfast', 'Lunch', 'Dinner', 'Snacks'];
 export default function LogList({ logs, onDelete = () => {}, onEdit = () => {}, onCopyMeal, onCopyYesterday }) {
   if (!logs || logs.length === 0) {
     return (
-      <div className="text-center py-8 text-zinc-500 text-sm">
+      <div className="text-center py-8 text-[var(--text-tertiary)] text-sm">
         <p>No food logged yet</p>
         {onCopyYesterday && (
           <button
             type="button"
             onClick={onCopyYesterday}
-            className="mt-3 inline-flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-emerald-400 text-xs font-semibold rounded-xl px-4 py-2 transition-colors"
+            className="mt-3 inline-flex items-center gap-2 bg-[var(--surface-2)] hover:bg-[var(--border-2)] border border-[var(--border-2)] text-[var(--accent)] text-xs font-semibold rounded-xl px-4 py-2 transition-colors"
           >
             <Copy size={13} aria-hidden="true" /> Copy yesterday&apos;s log
           </button>
@@ -66,15 +66,15 @@ export default function LogList({ logs, onDelete = () => {}, onEdit = () => {}, 
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-1.5">
                 <Icon size={13} className={color} aria-hidden="true" />
-                <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">{meal}</p>
-                <span className="text-[10px] font-bold text-zinc-500 ml-1">{mealCals} kcal</span>
+                <p className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">{meal}</p>
+                <span className="text-[10px] font-bold text-[var(--text-tertiary)] ml-1">{mealCals} kcal</span>
               </div>
               {onCopyMeal && (
                 <button
                   type="button"
                   onClick={() => onCopyMeal(grouped[meal])}
                   aria-label={`Copy ${meal} to today`}
-                  className="flex items-center gap-1 text-[10px] font-bold text-zinc-500 hover:text-emerald-400 transition-colors"
+                  className="flex items-center gap-1 text-[10px] font-bold text-[var(--text-tertiary)] hover:text-[var(--accent)] transition-colors"
                 >
                   <Copy size={12} aria-hidden="true" /> Copy to today
                 </button>
@@ -85,14 +85,14 @@ export default function LogList({ logs, onDelete = () => {}, onEdit = () => {}, 
               return (
                 <div
                   key={log.id ?? log.timestamp}
-                  className="bg-zinc-900 rounded-xl border border-zinc-800 px-4 py-3 mb-2 flex items-center justify-between"
+                  className="bg-[var(--surface)] rounded-xl border border-[var(--border)] px-4 py-3 mb-2 flex items-center justify-between"
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline gap-2 min-w-0">
-                      <p className="text-sm font-medium text-slate-100 truncate">{log.name ?? 'Unknown food'}</p>
-                      {time && <span className="text-[10px] text-zinc-500 font-semibold shrink-0">{time}</span>}
+                      <p className="text-sm font-medium text-[var(--text-primary)] truncate">{log.name ?? 'Unknown food'}</p>
+                      {time && <span className="text-[10px] text-[var(--text-tertiary)] font-semibold shrink-0">{time}</span>}
                     </div>
-                    <p className="text-xs text-zinc-400 mt-0.5">
+                    <p className="text-xs text-[var(--text-secondary)] mt-0.5">
                       {log.calories ?? 0} kcal &bull; {Math.round(log.protein ?? 0)}g protein &bull; {Math.round(log.carbs ?? 0)}g carbs &bull; {Math.round(log.fats ?? log.fat ?? 0)}g fat
                     </p>
                   </div>
@@ -101,7 +101,7 @@ export default function LogList({ logs, onDelete = () => {}, onEdit = () => {}, 
                       type="button"
                       onClick={() => onEdit(log)}
                       aria-label={`Edit ${log.name}`}
-                      className="p-1 text-zinc-400 hover:text-emerald-400 transition-colors"
+                      className="p-1 text-[var(--text-secondary)] hover:text-[var(--accent)] transition-colors"
                     >
                       <Pencil size={15} />
                     </button>
@@ -109,7 +109,7 @@ export default function LogList({ logs, onDelete = () => {}, onEdit = () => {}, 
                       type="button"
                       onClick={() => onDelete(log.id)}
                       aria-label={`Delete ${log.name}`}
-                      className="p-1 text-zinc-400 hover:text-rose-400 transition-colors"
+                      className="p-1 text-[var(--text-secondary)] hover:text-rose-400 transition-colors"
                     >
                       <Trash2 size={15} />
                     </button>

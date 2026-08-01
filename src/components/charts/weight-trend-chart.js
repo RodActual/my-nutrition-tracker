@@ -12,12 +12,12 @@ function ChartTooltip({ active, payload }) {
   if (!active || !payload?.length) return null;
   const p = payload[0].payload;
   return (
-    <div className="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm">
+    <div className="bg-[var(--surface-2)] border border-[var(--border-2)] rounded-xl px-3 py-2 text-sm">
       {p.weight != null && <p className="text-emerald-400 font-semibold">{p.weight} lbs</p>}
       {p.predicted != null && p.weight == null && (
         <p className="text-emerald-400/70 font-semibold">~{p.predicted} lbs (predicted)</p>
       )}
-      <p className="text-zinc-400">{p.label}</p>
+      <p className="text-[var(--text-secondary)]">{p.label}</p>
     </div>
   );
 }
@@ -74,42 +74,42 @@ export default function WeightTrendChart({ days = 30, profile, compact = false }
 
   if (!data.length) {
     return (
-      <div className="bg-zinc-900 rounded-3xl border border-zinc-800 p-5">
-        <p className="text-sm font-semibold text-slate-100 mb-2">Weight</p>
-        <p className="text-zinc-500 text-sm text-center py-8">No weight data yet</p>
+      <div className="bg-[var(--surface)] rounded-3xl border border-[var(--border)] p-5">
+        <p className="text-sm font-semibold text-[var(--text-primary)] mb-2">Weight</p>
+        <p className="text-[var(--text-tertiary)] text-sm text-center py-8">No weight data yet</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-zinc-900 rounded-3xl border border-zinc-800 p-5">
+    <div className="bg-[var(--surface)] rounded-3xl border border-[var(--border)] p-5">
       <div className="flex items-baseline justify-between mb-1">
-        <p className="text-sm font-semibold text-slate-100">Weight</p>
+        <p className="text-sm font-semibold text-[var(--text-primary)]">Weight</p>
         {compact && <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Trends →</span>}
       </div>
 
       {stats && (
         <div className="flex gap-4 mb-3">
           <div>
-            <p className="text-[9px] font-bold text-zinc-500 uppercase">Trend</p>
-            <p className="text-lg font-black text-slate-100">{stats.trend}<span className="text-xs text-zinc-500 ml-0.5">lbs</span></p>
-            <p className="text-[10px] text-zinc-500">scale {stats.scale}</p>
+            <p className="text-[9px] font-bold text-[var(--text-tertiary)] uppercase">Trend</p>
+            <p className="text-lg font-black text-[var(--text-primary)]">{stats.trend}<span className="text-xs text-[var(--text-tertiary)] ml-0.5">lbs</span></p>
+            <p className="text-[10px] text-[var(--text-tertiary)]">scale {stats.scale}</p>
           </div>
           <div>
-            <p className="text-[9px] font-bold text-zinc-500 uppercase">This week</p>
+            <p className="text-[9px] font-bold text-[var(--text-tertiary)] uppercase">This week</p>
             <p className={`text-lg font-black ${(stats.weekDelta ?? 0) <= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
               {stats.weekDelta == null ? '—' : `${stats.weekDelta > 0 ? '+' : ''}${stats.weekDelta}`}
-              <span className="text-xs text-zinc-500 ml-0.5">lbs</span>
+              <span className="text-xs text-[var(--text-tertiary)] ml-0.5">lbs</span>
             </p>
           </div>
           <div className="flex-1 text-right">
             {stats.goalDate && stats.goal ? (
               <>
-                <p className="text-[9px] font-bold text-zinc-500 uppercase">On pace</p>
+                <p className="text-[9px] font-bold text-[var(--text-tertiary)] uppercase">On pace</p>
                 <p className="text-sm font-bold text-emerald-400">{stats.goal} lbs by {formatShortDate(stats.goalDate)}</p>
               </>
             ) : !stats.hasProjection ? (
-              <p className="text-[10px] text-zinc-500 pt-3">Log more days to unlock predictions</p>
+              <p className="text-[10px] text-[var(--text-tertiary)] pt-3">Log more days to unlock predictions</p>
             ) : null}
           </div>
         </div>

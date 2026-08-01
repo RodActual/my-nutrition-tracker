@@ -181,18 +181,18 @@ export default function Dashboard() {
   const isToday = selectedDate === today;
 
   return (
-    <main className="min-h-screen bg-zinc-950 pb-24">
+    <main className="min-h-screen bg-[var(--bg)] pb-24">
       <WeightReminderBanner onSaved={loadData} />
 
       <header className="px-5 pt-12 pb-4 flex justify-between items-center">
-        <h1 className="text-lg font-black text-slate-100">
+        <h1 className="text-lg font-black text-[var(--text-primary)]">
           {currentTab === 'home' ? 'My Day' : currentTab === 'add' ? 'Log Food' : 'Trends'}
         </h1>
         <button
           onClick={() => setIsSettingsOpen(true)}
-          className="p-2.5 bg-zinc-800 rounded-2xl border border-zinc-700 active:scale-95 transition-all"
+          className="p-2.5 bg-[var(--surface-2)] rounded-2xl border border-[var(--border-2)] active:scale-95 transition-all"
         >
-          <Settings size={18} className="text-zinc-400" />
+          <Settings size={18} className="text-[var(--text-secondary)]" />
         </button>
       </header>
 
@@ -200,16 +200,16 @@ export default function Dashboard() {
 
         {currentTab === 'home' && (
           <div className="space-y-4 animate-in fade-in duration-300">
-            <div className="flex items-center justify-between bg-zinc-900 rounded-2xl border border-zinc-800 px-4 py-3">
-              <button onClick={() => changeDate(-1)} className="p-1 text-zinc-400 active:text-slate-100 transition-colors">
+            <div className="flex items-center justify-between bg-[var(--surface)] rounded-2xl border border-[var(--border)] px-4 py-3">
+              <button onClick={() => changeDate(-1)} className="p-1 text-[var(--text-secondary)] active:text-[var(--text-primary)] transition-colors">
                 <ChevronLeft size={20} />
               </button>
-              <span className="text-sm font-bold text-slate-200">
+              <span className="text-sm font-bold text-[var(--text-primary)]">
                 {isToday
                   ? 'Today'
                   : new Date(selectedDate + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
               </span>
-              <button onClick={() => changeDate(1)} disabled={isToday} className="p-1 text-zinc-400 active:text-slate-100 transition-colors disabled:opacity-20">
+              <button onClick={() => changeDate(1)} disabled={isToday} className="p-1 text-[var(--text-secondary)] active:text-[var(--text-primary)] transition-colors disabled:opacity-20">
                 <ChevronRight size={20} />
               </button>
             </div>
@@ -230,8 +230,8 @@ export default function Dashboard() {
 
             <StreakCard targets={userData?.targets} refreshKey={todaysLogs.length} />
 
-            <div className="bg-zinc-900 rounded-3xl border border-zinc-800 p-5">
-              <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-4">Micronutrients · % of daily target</p>
+            <div className="bg-[var(--surface)] rounded-3xl border border-[var(--border)] p-5">
+              <p className="text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-widest mb-4">Micronutrients · % of daily target</p>
               <div className="grid grid-cols-2 gap-x-5 gap-y-3">
                 <MicroStat label="Fiber" value={dailyTotals.fiber} unit="g" rda={microTargets.fiber.rda} color="#34d399" />
                 <MicroStat label="Sodium" value={dailyTotals.sodium} unit="mg" rda={microTargets.sodium.rda} limit color="#fb923c" />
@@ -240,7 +240,7 @@ export default function Dashboard() {
                 <MicroStat label="Iron" value={dailyTotals.iron} unit="mg" rda={microTargets.iron.rda} color="#f87171" />
                 <MicroStat label="Calcium" value={dailyTotals.calcium} unit="mg" rda={microTargets.calcium.rda} color="#c084fc" />
               </div>
-              <div className="mt-4 pt-4 border-t border-zinc-800 grid grid-cols-4 gap-2">
+              <div className="mt-4 pt-4 border-t border-[var(--border)] grid grid-cols-4 gap-2">
                 {[
                   { label: 'A', val: dailyTotals.vitA },
                   { label: 'C', val: dailyTotals.vitC },
@@ -248,8 +248,8 @@ export default function Dashboard() {
                   { label: 'B12', val: dailyTotals.vitB12 },
                 ].map(({ label, val }) => (
                   <div key={label} className={`flex flex-col items-center p-2 rounded-xl ${val > 0 ? 'bg-amber-500/10 border border-amber-500/20' : 'opacity-20'}`}>
-                    <span className={`text-[10px] font-bold ${val > 0 ? 'text-amber-400' : 'text-zinc-500'}`}>Vit {label}</span>
-                    <span className={`text-xs font-black ${val > 0 ? 'text-amber-300' : 'text-zinc-600'}`}>{Math.round(val)}</span>
+                    <span className={`text-[10px] font-bold ${val > 0 ? 'text-amber-400' : 'text-[var(--text-tertiary)]'}`}>Vit {label}</span>
+                    <span className={`text-xs font-black ${val > 0 ? 'text-amber-300' : 'text-[var(--text-tertiary)]'}`}>{Math.round(val)}</span>
                   </div>
                 ))}
               </div>
@@ -268,22 +268,22 @@ export default function Dashboard() {
         {currentTab === 'add' && (
           <div className="space-y-4 animate-in fade-in duration-200">
             <WaterTracker date={selectedDate} waterGoal={userData?.profile?.waterGoalOz} />
-            <div className="bg-zinc-900 rounded-3xl border border-zinc-800 p-4 space-y-3">
+            <div className="bg-[var(--surface)] rounded-3xl border border-[var(--border)] p-4 space-y-3">
               <button
                 onClick={() => setIsScanning(true)}
-                className="w-full h-16 bg-emerald-500 hover:bg-emerald-400 rounded-2xl text-white font-black flex items-center justify-center gap-3 active:scale-95 transition-all"
+                className="w-full h-16 bg-[var(--accent)] hover:bg-[var(--accent-hover)] rounded-2xl text-white font-black flex items-center justify-center gap-3 active:scale-95 transition-all"
               >
                 <ScanLine size={22} /> Scan Barcode
               </button>
               <button
                 onClick={() => setIsLabelScanning(true)}
-                className="w-full h-14 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-2xl text-slate-200 font-bold flex items-center justify-center gap-3 active:scale-95 transition-all"
+                className="w-full h-14 bg-[var(--surface-2)] hover:bg-[var(--border-2)] border border-[var(--border-2)] rounded-2xl text-[var(--text-primary)] font-bold flex items-center justify-center gap-3 active:scale-95 transition-all"
               >
                 <Type size={18} /> Scan Nutrition Label
               </button>
               <button
                 onClick={() => setIsManualEntryOpen(true)}
-                className="w-full h-14 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-2xl text-slate-200 font-bold flex items-center justify-center gap-3 active:scale-95 transition-all"
+                className="w-full h-14 bg-[var(--surface-2)] hover:bg-[var(--border-2)] border border-[var(--border-2)] rounded-2xl text-[var(--text-primary)] font-bold flex items-center justify-center gap-3 active:scale-95 transition-all"
               >
                 <Zap size={18} /> Search / Manual Entry
               </button>
@@ -314,8 +314,8 @@ export default function Dashboard() {
       </div>
 
       {undoEntry && (
-        <div className="fixed bottom-20 left-4 right-4 max-w-md mx-auto bg-zinc-800 border border-zinc-700 rounded-2xl px-4 py-3 flex items-center justify-between z-40 shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-200">
-          <p className="text-sm text-slate-100 truncate flex-1">Logged {undoEntry.name}</p>
+        <div className="fixed bottom-20 left-4 right-4 max-w-md mx-auto bg-[var(--surface-2)] border border-[var(--border-2)] rounded-2xl px-4 py-3 flex items-center justify-between z-40 shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <p className="text-sm text-[var(--text-primary)] truncate flex-1">Logged {undoEntry.name}</p>
           <button
             type="button"
             onClick={() => {
@@ -323,7 +323,7 @@ export default function Dashboard() {
               setUndoEntry(null);
               loadData();
             }}
-            className="ml-3 text-xs font-black uppercase tracking-wider text-emerald-400 shrink-0"
+            className="ml-3 text-xs font-black uppercase tracking-wider text-[var(--accent)] shrink-0"
           >
             Undo
           </button>
@@ -331,7 +331,7 @@ export default function Dashboard() {
       )}
 
       <nav
-        className="fixed bottom-0 left-0 right-0 bg-zinc-900/95 backdrop-blur-xl border-t border-zinc-800 px-6 pt-3 flex justify-around items-center z-30"
+        className="fixed bottom-0 left-0 right-0 bg-[var(--surface-translucent)] backdrop-blur-xl border-t border-[var(--border)] px-6 pt-3 flex justify-around items-center z-30"
         style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
       >
         {[
@@ -342,7 +342,7 @@ export default function Dashboard() {
           <button
             key={id}
             onClick={() => setCurrentTab(id)}
-            className={`flex flex-col items-center gap-1 flex-1 py-1 transition-all ${currentTab === id ? 'text-emerald-400' : 'text-zinc-500'}`}
+            className={`flex flex-col items-center gap-1 flex-1 py-1 transition-all ${currentTab === id ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)]'}`}
           >
             <Icon size={22} strokeWidth={currentTab === id ? 2.5 : 1.8} />
             <span className="text-[9px] font-bold uppercase tracking-wider">{label}</span>
@@ -424,12 +424,12 @@ function MicroStat({ label, value, unit, rda, limit = false, color }) {
   return (
     <div>
       <div className="flex items-baseline justify-between mb-1">
-        <p className="text-[9px] font-bold text-zinc-500 uppercase">{label}</p>
+        <p className="text-[9px] font-bold text-[var(--text-tertiary)] uppercase">{label}</p>
         <p className="text-[10px] font-black" style={{ color: barColor }}>
-          {Math.round(value || 0)}<span className="text-zinc-600 font-bold">/{rda}{unit}</span>
+          {Math.round(value || 0)}<span className="text-[var(--text-tertiary)] font-bold">/{rda}{unit}</span>
         </p>
       </div>
-      <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+      <div className="h-1.5 bg-[var(--surface-2)] rounded-full overflow-hidden">
         <div
           className="h-full rounded-full transition-all"
           style={{ width: `${pct}%`, backgroundColor: barColor }}

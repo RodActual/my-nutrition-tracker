@@ -11,12 +11,12 @@ function ChartTooltip({ active, payload }) {
   if (!active || !payload?.length) return null;
   const p = payload[0].payload;
   return (
-    <div className="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm">
+    <div className="bg-[var(--surface-2)] border border-[var(--border-2)] rounded-xl px-3 py-2 text-sm">
       <p className={`font-semibold ${p.balance <= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
         {p.balance > 0 ? '+' : ''}{p.balance} kcal
       </p>
-      <p className="text-zinc-500 text-xs">In {p.intake} · Active {Math.round(p.active)}</p>
-      <p className="text-zinc-400">{p.label}</p>
+      <p className="text-[var(--text-tertiary)] text-xs">In {p.intake} · Active {Math.round(p.active)}</p>
+      <p className="text-[var(--text-secondary)]">{p.label}</p>
     </div>
   );
 }
@@ -41,26 +41,26 @@ export default function EnergyBalanceChart({ days = 30, profile }) {
 
   if (tdeeInfo === null) {
     return (
-      <div className="bg-zinc-900 rounded-3xl border border-zinc-800 p-5">
-        <p className="text-sm font-semibold text-slate-100 mb-2">Energy Balance</p>
-        <p className="text-zinc-500 text-sm text-center py-8">Set up your profile to enable predictions</p>
+      <div className="bg-[var(--surface)] rounded-3xl border border-[var(--border)] p-5">
+        <p className="text-sm font-semibold text-[var(--text-primary)] mb-2">Energy Balance</p>
+        <p className="text-[var(--text-tertiary)] text-sm text-center py-8">Set up your profile to enable predictions</p>
       </div>
     );
   }
 
   if (!data.length) {
     return (
-      <div className="bg-zinc-900 rounded-3xl border border-zinc-800 p-5">
-        <p className="text-sm font-semibold text-slate-100 mb-2">Energy Balance</p>
-        <p className="text-zinc-500 text-sm text-center py-8">No logged days in range</p>
+      <div className="bg-[var(--surface)] rounded-3xl border border-[var(--border)] p-5">
+        <p className="text-sm font-semibold text-[var(--text-primary)] mb-2">Energy Balance</p>
+        <p className="text-[var(--text-tertiary)] text-sm text-center py-8">No logged days in range</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-zinc-900 rounded-3xl border border-zinc-800 p-5">
+    <div className="bg-[var(--surface)] rounded-3xl border border-[var(--border)] p-5">
       <div className="flex items-baseline justify-between mb-1">
-        <p className="text-sm font-semibold text-slate-100">Energy Balance</p>
+        <p className="text-sm font-semibold text-[var(--text-primary)]">Energy Balance</p>
         {avg != null && (
           <p className={`text-xs font-bold ${avg <= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
             Avg {avg > 0 ? '+' : ''}{avg} kcal/day {avg <= 0 ? 'deficit' : 'surplus'}
@@ -68,7 +68,7 @@ export default function EnergyBalanceChart({ days = 30, profile }) {
         )}
       </div>
       {tdeeInfo && (
-        <p className="text-[10px] text-zinc-500 mb-3">
+        <p className="text-[10px] text-[var(--text-tertiary)] mb-3">
           TDEE {tdeeInfo.tdee.toLocaleString()} kcal
           {tdeeInfo.source === 'adaptive'
             ? ` · measured from your last ${tdeeInfo.spanDays} days`

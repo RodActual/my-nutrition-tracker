@@ -79,8 +79,8 @@ export default function QuickLog({ onAdd = () => {} }) {
   };
 
   return (
-    <div className="bg-zinc-900 rounded-3xl border border-zinc-800 p-5">
-      <p className="text-sm font-semibold text-slate-100 mb-4">Quick Add</p>
+    <div className="bg-[var(--surface)] rounded-3xl border border-[var(--border)] p-5">
+      <p className="text-sm font-semibold text-[var(--text-primary)] mb-4">Quick Add</p>
       <div className="grid grid-cols-3 gap-2">
         {QUICK_ITEMS.map((item) => {
           const Icon = ICON_MAP[item.icon];
@@ -89,11 +89,11 @@ export default function QuickLog({ onAdd = () => {} }) {
               key={item.label}
               type="button"
               onClick={() => handleTap(item)}
-              className="bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 rounded-2xl p-3 flex flex-col items-center gap-2 cursor-pointer transition-colors"
+              className="bg-[var(--surface-2)] hover:bg-[var(--border-2)] active:bg-zinc-600 rounded-2xl p-3 flex flex-col items-center gap-2 cursor-pointer transition-colors"
             >
-              {Icon && <Icon size={20} className="text-emerald-400" aria-hidden="true" />}
-              <span className="text-xs text-zinc-300 text-center leading-tight">{item.label}</span>
-              <span className="text-xs text-zinc-500">{item.calories} kcal</span>
+              {Icon && <Icon size={20} className="text-[var(--accent)]" aria-hidden="true" />}
+              <span className="text-xs text-[var(--text-secondary)] text-center leading-tight">{item.label}</span>
+              <span className="text-xs text-[var(--text-tertiary)]">{item.calories} kcal</span>
             </button>
           );
         })}

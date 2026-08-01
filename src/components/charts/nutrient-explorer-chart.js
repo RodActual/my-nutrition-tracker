@@ -34,36 +34,36 @@ export default function NutrientExplorerChart({ days = 30, healthProfile }) {
     if (!active || !payload?.length) return null;
     const p = payload[0].payload;
     return (
-      <div className="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm">
+      <div className="bg-[var(--surface-2)] border border-[var(--border-2)] rounded-xl px-3 py-2 text-sm">
         <p className="font-semibold" style={{ color: barColor(p.value) }}>
-          {p.value}{nutrient.unit} <span className="text-zinc-500">/ {nutrient.rda}{nutrient.unit}</span>
+          {p.value}{nutrient.unit} <span className="text-[var(--text-tertiary)]">/ {nutrient.rda}{nutrient.unit}</span>
         </p>
-        <p className="text-zinc-400">{p.label}</p>
+        <p className="text-[var(--text-secondary)]">{p.label}</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-zinc-900 rounded-3xl border border-zinc-800 p-5">
+    <div className="bg-[var(--surface)] rounded-3xl border border-[var(--border)] p-5">
       <div className="flex items-center justify-between gap-3 mb-1">
-        <p className="text-sm font-semibold text-slate-100 shrink-0">Nutrient Explorer</p>
+        <p className="text-sm font-semibold text-[var(--text-primary)] shrink-0">Nutrient Explorer</p>
         <select
           value={nutrientKey}
           onChange={e => setNutrientKey(e.target.value)}
-          className="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-1.5 text-slate-100 text-xs font-semibold focus:outline-none focus:border-emerald-500"
+          className="bg-[var(--surface-2)] border border-[var(--border-2)] rounded-xl px-3 py-1.5 text-[var(--text-primary)] text-xs font-semibold focus:outline-none focus:border-emerald-500"
         >
           {nutrients.map(m => (
             <option key={m.key} value={m.key}>{m.label}</option>
           ))}
         </select>
       </div>
-      <p className="text-[10px] text-zinc-500 mb-3">
+      <p className="text-[10px] text-[var(--text-tertiary)] mb-3">
         {nutrient.limit ? 'Limit' : 'Target'}: {nutrient.rda}{nutrient.unit}/day
         {avg != null && <> · avg {avg}{nutrient.unit}</>}
       </p>
 
       {!data.length ? (
-        <p className="text-zinc-500 text-sm text-center py-8">
+        <p className="text-[var(--text-tertiary)] text-sm text-center py-8">
           No {nutrient.label.toLowerCase()} data in range — log foods with this nutrient to see it here
         </p>
       ) : (

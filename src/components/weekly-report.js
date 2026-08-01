@@ -39,14 +39,14 @@ export default function WeeklyReport({ profile }) {
   if (!report) return null;
 
   return (
-    <div className="bg-zinc-900 rounded-3xl border border-zinc-800 p-5">
+    <div className="bg-[var(--surface)] rounded-3xl border border-[var(--border)] p-5">
       <div className="flex items-center gap-2 mb-4">
-        <CalendarCheck size={14} className="text-emerald-400" aria-hidden="true" />
-        <p className="text-sm font-semibold text-slate-100">Last 7 Days</p>
+        <CalendarCheck size={14} className="text-[var(--accent)]" aria-hidden="true" />
+        <p className="text-sm font-semibold text-[var(--text-primary)]">Last 7 Days</p>
       </div>
       <div className="grid grid-cols-2 gap-4">
-        <Stat label="Days logged" value={`${report.daysLogged}/7`} color="text-slate-100" />
-        <Stat label="Avg calories" value={report.avgCalories.toLocaleString()} color="text-slate-100" />
+        <Stat label="Days logged" value={`${report.daysLogged}/7`} color="text-[var(--text-primary)]" />
+        <Stat label="Avg calories" value={report.avgCalories.toLocaleString()} color="text-[var(--text-primary)]" />
         <Stat label="Avg protein" value={`${report.avgProtein}g`} color="text-blue-400" />
         {report.avgBalance != null && (
           <Stat
@@ -70,7 +70,7 @@ export default function WeeklyReport({ profile }) {
 function Stat({ label, value, color }) {
   return (
     <div>
-      <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider mb-0.5">{label}</p>
+      <p className="text-[9px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider mb-0.5">{label}</p>
       <p className={`text-lg font-black ${color}`}>{value}</p>
     </div>
   );

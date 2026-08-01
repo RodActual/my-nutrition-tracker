@@ -68,33 +68,33 @@ export default function GoalCelebration({ profile, onUpdated }) {
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[70] p-6">
-      <div className="w-full max-w-sm bg-zinc-900 rounded-3xl border border-emerald-500/30 p-6 text-center animate-in fade-in zoom-in-95 duration-300">
-        <div className="mx-auto w-16 h-16 bg-emerald-500/10 border border-emerald-500/30 rounded-full flex items-center justify-center mb-4">
-          <Trophy size={28} className="text-emerald-400" aria-hidden="true" />
+      <div className="w-full max-w-sm bg-[var(--surface)] rounded-3xl border border-[var(--accent-border)] p-6 text-center animate-in fade-in zoom-in-95 duration-300">
+        <div className="mx-auto w-16 h-16 bg-[var(--accent-soft)] border border-[var(--accent-border)] rounded-full flex items-center justify-center mb-4">
+          <Trophy size={28} className="text-[var(--accent)]" aria-hidden="true" />
         </div>
-        <h2 className="text-xl font-black text-slate-100 mb-1">Goal reached!</h2>
-        <p className="text-sm text-zinc-400 mb-6">
-          Your trend weight hit <span className="text-emerald-400 font-bold">{goal} lbs</span>. That took consistency — nice work.
+        <h2 className="text-xl font-black text-[var(--text-primary)] mb-1">Goal reached!</h2>
+        <p className="text-sm text-[var(--text-secondary)] mb-6">
+          Your trend weight hit <span className="text-[var(--accent)] font-bold">{goal} lbs</span>. That took consistency — nice work.
         </p>
         <div className="space-y-2">
           <button
             type="button"
             onClick={switchToMaintenance}
-            className="w-full bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-semibold rounded-2xl py-3 flex items-center justify-center gap-2"
+            className="w-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-zinc-950 font-semibold rounded-2xl py-3 flex items-center justify-center gap-2"
           >
             <Scale size={16} aria-hidden="true" /> Switch to maintenance
           </button>
           <button
             type="button"
             onClick={setNewGoal}
-            className="w-full bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-slate-200 font-semibold rounded-2xl py-3 flex items-center justify-center gap-2"
+            className="w-full bg-[var(--surface-2)] hover:bg-[var(--border-2)] border border-[var(--border-2)] text-[var(--text-primary)] font-semibold rounded-2xl py-3 flex items-center justify-center gap-2"
           >
             <Target size={16} aria-hidden="true" /> Set a new goal
           </button>
           <button
             type="button"
             onClick={markCelebrated}
-            className="w-full text-zinc-500 text-xs font-bold uppercase tracking-wider py-2"
+            className="w-full text-[var(--text-tertiary)] text-xs font-bold uppercase tracking-wider py-2"
           >
             Dismiss
           </button>

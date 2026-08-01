@@ -178,17 +178,17 @@ export default function ManualEntry({ onAdd, initialData, onClose }) {
   };
 
   const inputClass =
-    'bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-slate-100 text-sm w-full focus:outline-none focus:border-emerald-500';
+    'bg-[var(--surface-2)] border border-[var(--border-2)] rounded-xl px-4 py-3 text-[var(--text-primary)] text-sm w-full focus:outline-none focus:border-[var(--accent)]';
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-end justify-center z-50">
-      <div className="bg-zinc-900 rounded-t-3xl w-full max-w-lg p-6 pb-10 max-h-[90vh] overflow-y-auto">
+      <div className="bg-[var(--surface)] rounded-t-3xl w-full max-w-lg p-6 pb-10 max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-lg font-semibold text-slate-100">
+          <h2 className="text-lg font-semibold text-[var(--text-primary)]">
             {editingLog && !editingLog.isScan ? 'Edit Food' : 'Log Food'}
           </h2>
-          <button onClick={onClose} aria-label="Close" className="text-zinc-400 hover:text-slate-100">
+          <button onClick={onClose} aria-label="Close" className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
             <X size={20} />
           </button>
         </div>
@@ -196,9 +196,9 @@ export default function ManualEntry({ onAdd, initialData, onClose }) {
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Name + search */}
           <div className="relative" ref={searchRef}>
-            <label className="block text-xs text-zinc-400 mb-1">Food Name</label>
+            <label className="block text-xs text-[var(--text-secondary)] mb-1">Food Name</label>
             <div className="relative">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" />
               <input
                 type="text"
                 required
@@ -211,18 +211,18 @@ export default function ManualEntry({ onAdd, initialData, onClose }) {
             </div>
 
             {results.length > 0 && (
-              <ul className="absolute top-full left-0 right-0 mt-1 bg-zinc-800 border border-zinc-700 rounded-xl overflow-hidden z-10">
+              <ul className="absolute top-full left-0 right-0 mt-1 bg-[var(--surface-2)] border border-[var(--border-2)] rounded-xl overflow-hidden z-10">
                 {results.map((item, i) => (
                   <li key={item.name ?? i}>
                     <button
                       type="button"
                       onClick={() => handleSelect(item)}
-                      className="w-full text-left bg-zinc-800 hover:bg-zinc-700 px-4 py-2 text-sm text-slate-200 cursor-pointer"
+                      className="w-full text-left bg-[var(--surface-2)] hover:bg-[var(--border-2)] px-4 py-2 text-sm text-[var(--text-primary)] cursor-pointer"
                     >
                       <span className="truncate">{item.name}</span>
-                      <span className="ml-2 text-xs text-zinc-500 shrink-0">{item.calories} kcal</span>
+                      <span className="ml-2 text-xs text-[var(--text-tertiary)] shrink-0">{item.calories} kcal</span>
                       <span className={`ml-2 text-[9px] font-bold uppercase tracking-wider shrink-0 ${
-                        item.source === 'Global' ? 'text-blue-400' : item.source === 'USDA' ? 'text-amber-400' : 'text-emerald-400'
+                        item.source === 'Global' ? 'text-blue-400' : item.source === 'USDA' ? 'text-amber-400' : 'text-[var(--accent)]'
                       }`}>
                         {item.source === 'Global' ? 'Web' : item.source === 'USDA' ? 'USDA' : 'History'}
                       </span>
@@ -235,7 +235,7 @@ export default function ManualEntry({ onAdd, initialData, onClose }) {
 
           {/* Servings */}
           <div>
-            <label className="block text-xs text-zinc-400 mb-1">Servings</label>
+            <label className="block text-xs text-[var(--text-secondary)] mb-1">Servings</label>
             <div className="flex items-center gap-2">
               {[0.5, 1, 1.5, 2].map(q => (
                 <button
@@ -244,8 +244,8 @@ export default function ManualEntry({ onAdd, initialData, onClose }) {
                   onClick={() => setServings(String(q))}
                   className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all ${
                     Number(servings) === q
-                      ? 'bg-emerald-500 text-zinc-950 border-emerald-500'
-                      : 'bg-zinc-800 text-zinc-400 border-zinc-700'
+                      ? 'bg-[var(--accent)] text-zinc-950 border-[var(--accent)]'
+                      : 'bg-[var(--surface-2)] text-[var(--text-secondary)] border-[var(--border-2)]'
                   }`}
                 >
                   {q}
@@ -261,25 +261,25 @@ export default function ManualEntry({ onAdd, initialData, onClose }) {
                 className={`${inputClass} flex-1`}
               />
             </div>
-            <p className="text-[10px] text-zinc-500 mt-1">Values below are per serving — totals multiply on save</p>
+            <p className="text-[10px] text-[var(--text-tertiary)] mt-1">Values below are per serving — totals multiply on save</p>
           </div>
 
           {/* Macro row */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-zinc-400 mb-1">Calories</label>
+              <label className="block text-xs text-[var(--text-secondary)] mb-1">Calories</label>
               <input type="number" min="0" value={calories} onChange={(e) => setCalories(e.target.value)} className={inputClass} placeholder="0" />
             </div>
             <div>
-              <label className="block text-xs text-zinc-400 mb-1">Protein g</label>
+              <label className="block text-xs text-[var(--text-secondary)] mb-1">Protein g</label>
               <input type="number" min="0" step="0.1" value={protein} onChange={(e) => setProtein(e.target.value)} className={inputClass} placeholder="0" />
             </div>
             <div>
-              <label className="block text-xs text-zinc-400 mb-1">Carbs g</label>
+              <label className="block text-xs text-[var(--text-secondary)] mb-1">Carbs g</label>
               <input type="number" min="0" step="0.1" value={carbs} onChange={(e) => setCarbs(e.target.value)} className={inputClass} placeholder="0" />
             </div>
             <div>
-              <label className="block text-xs text-zinc-400 mb-1">Fat g</label>
+              <label className="block text-xs text-[var(--text-secondary)] mb-1">Fat g</label>
               <input type="number" min="0" step="0.1" value={fat} onChange={(e) => setFat(e.target.value)} className={inputClass} placeholder="0" />
             </div>
           </div>
@@ -287,15 +287,15 @@ export default function ManualEntry({ onAdd, initialData, onClose }) {
           {/* Optional fields */}
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs text-zinc-400 mb-1">Fiber g</label>
+              <label className="block text-xs text-[var(--text-secondary)] mb-1">Fiber g</label>
               <input type="number" min="0" step="0.1" value={fiber} onChange={(e) => setFiber(e.target.value)} className={inputClass} placeholder="0" />
             </div>
             <div>
-              <label className="block text-xs text-zinc-400 mb-1">Sodium mg</label>
+              <label className="block text-xs text-[var(--text-secondary)] mb-1">Sodium mg</label>
               <input type="number" min="0" value={sodium} onChange={(e) => setSodium(e.target.value)} className={inputClass} placeholder="0" />
             </div>
             <div>
-              <label className="block text-xs text-zinc-400 mb-1">Sugar g</label>
+              <label className="block text-xs text-[var(--text-secondary)] mb-1">Sugar g</label>
               <input type="number" min="0" step="0.1" value={sugar} onChange={(e) => setSugar(e.target.value)} className={inputClass} placeholder="0" />
             </div>
           </div>
@@ -303,7 +303,7 @@ export default function ManualEntry({ onAdd, initialData, onClose }) {
           <button
             type="button"
             onClick={() => setShowMicros(s => !s)}
-            className="w-full text-left text-xs font-semibold text-zinc-400 hover:text-emerald-400 transition-colors"
+            className="w-full text-left text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--accent)] transition-colors"
           >
             {showMicros ? '▾' : '▸'} More nutrients {Object.values(micros).some(v => v !== '' && Number(v) > 0) ? '·' : '(optional)'}
           </button>
@@ -312,7 +312,7 @@ export default function ManualEntry({ onAdd, initialData, onClose }) {
             <div className="grid grid-cols-3 gap-3">
               {MICRO_FIELDS.map(f => (
                 <div key={f.key}>
-                  <label className="block text-[10px] text-zinc-400 mb-1">{f.label}</label>
+                  <label className="block text-[10px] text-[var(--text-secondary)] mb-1">{f.label}</label>
                   <input
                     type="number"
                     min="0"
@@ -329,7 +329,7 @@ export default function ManualEntry({ onAdd, initialData, onClose }) {
 
           <button
             type="submit"
-            className="w-full bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-semibold rounded-2xl py-3 mt-4"
+            className="w-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-zinc-950 font-semibold rounded-2xl py-3 mt-4"
           >
             {editingLog && !editingLog.isScan ? 'Update' : 'Add Food'}
           </button>

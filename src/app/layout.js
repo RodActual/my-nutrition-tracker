@@ -1,4 +1,5 @@
 import './globals.css';
+import { THEME_BOOT_SCRIPT } from '@/lib/theme';
 
 export const metadata = {
   title: 'NutriTrack',
@@ -27,6 +28,9 @@ export const viewport = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
+      </head>
       <body>{children}</body>
     </html>
   );

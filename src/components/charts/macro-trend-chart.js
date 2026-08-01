@@ -16,11 +16,11 @@ function ChartTooltip({ active, payload }) {
   if (!active || !payload?.length) return null;
   const p = payload[0].payload;
   return (
-    <div className="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm space-y-0.5">
+    <div className="bg-[var(--surface-2)] border border-[var(--border-2)] rounded-xl px-3 py-2 text-sm space-y-0.5">
       <p className="text-emerald-400 font-semibold">P {Math.round(p.protein)}g</p>
       <p className="text-blue-400 font-semibold">C {Math.round(p.carbs)}g</p>
       <p className="text-amber-400 font-semibold">F {Math.round(p.fats)}g</p>
-      <p className="text-zinc-400">{p.label}</p>
+      <p className="text-[var(--text-secondary)]">{p.label}</p>
     </div>
   );
 }
@@ -37,9 +37,9 @@ export default function MacroTrendChart({ days = 30, targets }) {
 
   if (!data.length) {
     return (
-      <div className="bg-zinc-900 rounded-3xl border border-zinc-800 p-5">
-        <p className="text-sm font-semibold text-slate-100 mb-2">Macros</p>
-        <p className="text-zinc-500 text-sm text-center py-8">No food logged in range</p>
+      <div className="bg-[var(--surface)] rounded-3xl border border-[var(--border)] p-5">
+        <p className="text-sm font-semibold text-[var(--text-primary)] mb-2">Macros</p>
+        <p className="text-[var(--text-tertiary)] text-sm text-center py-8">No food logged in range</p>
       </div>
     );
   }
@@ -51,12 +51,12 @@ export default function MacroTrendChart({ days = 30, targets }) {
   }));
 
   return (
-    <div className="bg-zinc-900 rounded-3xl border border-zinc-800 p-5">
-      <p className="text-sm font-semibold text-slate-100 mb-2">Macros</p>
+    <div className="bg-[var(--surface)] rounded-3xl border border-[var(--border)] p-5">
+      <p className="text-sm font-semibold text-[var(--text-primary)] mb-2">Macros</p>
       <div className="flex gap-4 mb-3">
         {avgs.map(m => (
           <p key={m.key} className="text-xs font-bold" style={{ color: m.color }}>
-            {m.label} avg {m.avg}g{m.target ? <span className="text-zinc-500 font-normal"> / {m.target}g</span> : null}
+            {m.label} avg {m.avg}g{m.target ? <span className="text-[var(--text-tertiary)] font-normal"> / {m.target}g</span> : null}
           </p>
         ))}
       </div>

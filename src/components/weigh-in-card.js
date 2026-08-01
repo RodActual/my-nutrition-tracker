@@ -31,7 +31,7 @@ export default function WeighInCard({ onSaved }) {
   };
 
   return (
-    <div className="bg-zinc-900 rounded-3xl border border-zinc-800 p-4 flex items-center gap-3">
+    <div className="bg-[var(--surface)] rounded-3xl border border-[var(--border)] p-4 flex items-center gap-3">
       <div className="p-2.5 bg-violet-500/10 border border-violet-500/20 rounded-2xl shrink-0">
         <Scale size={18} className="text-violet-400" aria-hidden="true" />
       </div>
@@ -48,7 +48,7 @@ export default function WeighInCard({ onSaved }) {
             value={weight}
             onChange={e => setWeight(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && save()}
-            className="flex-1 min-w-0 bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-slate-100 text-sm focus:outline-none focus:border-violet-500"
+            className="flex-1 min-w-0 bg-[var(--surface-2)] border border-[var(--border-2)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-sm focus:outline-none focus:border-violet-500"
           />
           <button
             type="button"
@@ -62,18 +62,18 @@ export default function WeighInCard({ onSaved }) {
       ) : (
         <>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-black text-slate-100">
+            <p className="text-sm font-black text-[var(--text-primary)]">
               {latest ? latest.weight : '—'}
-              <span className="text-xs text-zinc-500 font-bold ml-0.5">lbs</span>
+              <span className="text-xs text-[var(--text-tertiary)] font-bold ml-0.5">lbs</span>
             </p>
-            <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">
+            <p className="text-[9px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider">
               {latest ? (loggedToday ? 'Weighed in today' : `Last: ${formatShortDate(latest.date)}`) : 'No weigh-ins yet'}
             </p>
           </div>
           <button
             type="button"
             onClick={() => setEditing(true)}
-            className="shrink-0 flex items-center gap-1 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-violet-400 text-xs font-bold rounded-xl px-3 py-2.5 active:scale-95 transition-all"
+            className="shrink-0 flex items-center gap-1 bg-[var(--surface-2)] hover:bg-[var(--border-2)] border border-[var(--border-2)] text-violet-400 text-xs font-bold rounded-xl px-3 py-2.5 active:scale-95 transition-all"
           >
             <Plus size={12} aria-hidden="true" /> Weigh in
           </button>
