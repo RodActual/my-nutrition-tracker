@@ -29,14 +29,31 @@ export const HEALTH_PROFILES = {
   high_protein: 'High-Protein',
 };
 
+export function getGoalMode(profile) {
+  const w = Number(profile?.weight);
+  const gw = Number(profile?.goalWeight);
+  if (!w || !gw || gw === w) return 'maintain';
+  return gw < w ? 'lose' : 'gain';
+}
+
+export function getDefaultRate(mode) {
+  return mode === 'gain' ? 0.5 : 1.0;
+}
+
+// Standard 3500-kcal-per-pound rule applied to the selected weekly rate.
+function getCalorieAdjustment(profile) {
+  const mode = getGoalMode(profile);
+  if (mode === 'maintain') return 0;
+  const rate = Number(profile.goalRateLbsPerWeek) || getDefaultRate(mode);
+  const dailyDelta = (rate * 3500) / 7;
+  return mode === 'lose' ? -dailyDelta : dailyDelta;
+}
+
 export function calculateTargets(profile) {
   const tdee = calcTDEE(profile);
   if (tdee == null) return null;
   const w = Number(profile.weight);
-  const gw = Number(profile.goalWeight) || w;
-  const diff = gw - w;
-  const adjustment = diff < 0 ? Math.max(diff * 11, -750) : Math.min(diff * 11, 500);
-  const goalCalories = Math.round(tdee + adjustment);
+  const goalCalories = Math.round(tdee + getCalorieAdjustment(profile));
 
   const health = profile.healthProfile ?? 'normal';
   let proteinG, fatG, carbsG;

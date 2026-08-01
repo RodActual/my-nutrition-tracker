@@ -5,7 +5,62 @@ import { X, Sparkles, Cloud, Download, LogOut } from 'lucide-react';
 import {
   storage, pushAllData, pullRemoteData, getLastSync, clearSyncCode, exportAllData,
 } from '@/lib/storage';
-import { calculateTargets, HEALTH_PROFILES } from '@/lib/trends';
+import { calculateTargets, HEALTH_PROFILES, getGoalMode, getDefaultRate } from '@/lib/trends';
+
+const LOSE_RATES = [0.5, 1.0, 1.5, 2.0];
+const GAIN_RATES = [0.25, 0.5, 0.75, 1.0];
+
+function GoalPaceSection({ weight, goalWeight, rate, setRate }) {
+  const mode = getGoalMode({ weight, goalWeight });
+
+  if (mode === 'maintain') {
+    return (
+      <div>
+        <label className="block text-xs text-zinc-400 mb-1">Goal Pace</label>
+        <p className="text-sm text-zinc-300 bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3">
+          Maintaining current weight
+        </p>
+      </div>
+    );
+  }
+
+  const rates = mode === 'lose' ? LOSE_RATES : GAIN_RATES;
+  const warnAbove = mode === 'lose' ? 1.5 : 0.5;
+  const effectiveRate = Number(rate) || getDefaultRate(mode);
+  const isWarning = effectiveRate > warnAbove;
+
+  return (
+    <div>
+      <label className="block text-xs text-zinc-400 mb-1">
+        Target pace ({mode === 'lose' ? 'losing' : 'gaining'})
+      </label>
+      <div className="flex gap-2">
+        {rates.map(r => (
+          <button
+            key={r}
+            type="button"
+            onClick={() => setRate(r)}
+            className={`flex-1 py-2.5 rounded-xl text-xs font-bold border transition-all ${
+              effectiveRate === r
+                ? 'bg-emerald-500 text-zinc-950 border-emerald-500'
+                : 'bg-zinc-800 text-zinc-400 border-zinc-700'
+            }`}
+          >
+            {r}
+          </button>
+        ))}
+      </div>
+      <p className="text-[10px] text-zinc-500 mt-1">lbs/week</p>
+      {isWarning && (
+        <p className={`text-[11px] mt-2 leading-relaxed ${mode === 'lose' ? 'text-red-400' : 'text-amber-400'}`}>
+          {mode === 'lose'
+            ? 'Losing more than 1.5 lbs/week is an aggressive rate that risks muscle loss and isn\'t recommended without medical supervision.'
+            : 'Gaining faster than 0.5 lbs/week typically adds more fat than muscle.'}
+        </p>
+      )}
+    </div>
+  );
+}
 
 function SyncSection() {
   const [lastSync, setLastSync] = useState(null);
@@ -87,6 +142,7 @@ export default function SettingsModal({ currentProfile, onClose }) {
   const [goalWeight, setGoalWeight] = useState(currentProfile?.goalWeight ?? '');
   const [activityLevel, setActivityLevel] = useState(currentProfile?.activityLevel ?? 'sedentary');
   const [healthProfile, setHealthProfile] = useState(currentProfile?.healthProfile ?? 'normal');
+  const [goalRate, setGoalRate] = useState(currentProfile?.goalRateLbsPerWeek ?? '');
 
   const [calories, setCalories] = useState('');
   const [protein, setProtein] = useState('');
@@ -129,6 +185,7 @@ export default function SettingsModal({ currentProfile, onClose }) {
       goalWeight: parsedGoalWeight,
       activityLevel,
       healthProfile,
+      goalRateLbsPerWeek: goalRate === '' ? null : Number(goalRate),
       waterGoalOz: parsedWater,
     });
     storage.setTargets({
@@ -206,6 +263,7 @@ export default function SettingsModal({ currentProfile, onClose }) {
               className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
             />
           </div>
+          <GoalPaceSection weight={weight} goalWeight={goalWeight} rate={goalRate} setRate={setGoalRate} />
           <div>
             <label className="block text-xs text-zinc-400 mb-1">Activity Level</label>
             <select
@@ -240,7 +298,7 @@ export default function SettingsModal({ currentProfile, onClose }) {
         <button
           type="button"
           onClick={() => {
-            const result = calculateTargets({ age, weight, height, goalWeight, activityLevel, healthProfile });
+            const result = calculateTargets({ age, weight, height, goalWeight, activityLevel, healthProfile, goalRateLbsPerWeek: goalRate });
             if (!result) {
               alert('Enter age, weight, and height to auto-calculate targets.');
               return;
