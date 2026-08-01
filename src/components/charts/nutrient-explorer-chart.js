@@ -5,13 +5,14 @@ import {
   BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip,
   ReferenceLine, ResponsiveContainer,
 } from 'recharts';
-import { MICRONUTRIENTS, getDailyNutrientTotals, lastNDates, formatShortDate } from '@/lib/trends';
+import { getMicronutrientTargets, getDailyNutrientTotals, lastNDates, formatShortDate } from '@/lib/trends';
 
-export default function NutrientExplorerChart({ days = 30 }) {
+export default function NutrientExplorerChart({ days = 30, healthProfile }) {
   const [nutrientKey, setNutrientKey] = useState('fiber');
   const [data, setData] = useState([]);
 
-  const nutrient = MICRONUTRIENTS.find(m => m.key === nutrientKey);
+  const nutrients = getMicronutrientTargets(healthProfile);
+  const nutrient = nutrients.find(m => m.key === nutrientKey);
 
   useEffect(() => {
     const rows = getDailyNutrientTotals(lastNDates(days || 90), nutrientKey)
@@ -51,7 +52,7 @@ export default function NutrientExplorerChart({ days = 30 }) {
           onChange={e => setNutrientKey(e.target.value)}
           className="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-1.5 text-slate-100 text-xs font-semibold focus:outline-none focus:border-emerald-500"
         >
-          {MICRONUTRIENTS.map(m => (
+          {nutrients.map(m => (
             <option key={m.key} value={m.key}>{m.label}</option>
           ))}
         </select>

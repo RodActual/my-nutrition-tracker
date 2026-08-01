@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { storage } from '@/lib/storage';
+import { getMicronutrientTargets } from '@/lib/trends';
 import { Home, Plus, BarChart2, Settings, ScanLine, Type, Zap, ChevronLeft, ChevronRight } from 'lucide-react';
 import DailyProgress from './daily-progress';
 import BarcodeScanner from './barcode-scanner';
@@ -57,6 +58,10 @@ export default function Dashboard() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [editingLog, setEditingLog] = useState(null);
   const [trendRange, setTrendRange] = useState(30);
+  const microTargets = useMemo(() => {
+    const list = getMicronutrientTargets(userData?.profile?.healthProfile);
+    return Object.fromEntries(list.map(m => [m.key, m]));
+  }, [userData?.profile?.healthProfile]);
   const [undoEntry, setUndoEntry] = useState(null);
   const [isRecipeBuilderOpen, setIsRecipeBuilderOpen] = useState(false);
   const [recipesVersion, setRecipesVersion] = useState(0);
@@ -228,12 +233,12 @@ export default function Dashboard() {
             <div className="bg-zinc-900 rounded-3xl border border-zinc-800 p-5">
               <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-4">Micronutrients · % of daily target</p>
               <div className="grid grid-cols-2 gap-x-5 gap-y-3">
-                <MicroStat label="Fiber" value={dailyTotals.fiber} unit="g" rda={38} color="#34d399" />
-                <MicroStat label="Sodium" value={dailyTotals.sodium} unit="mg" rda={2300} limit color="#fb923c" />
-                <MicroStat label="Potassium" value={dailyTotals.potassium} unit="mg" rda={3400} color="#60a5fa" />
-                <MicroStat label="Sugar" value={dailyTotals.sugar} unit="g" rda={50} limit color="#fb7185" />
-                <MicroStat label="Iron" value={dailyTotals.iron} unit="mg" rda={8} color="#f87171" />
-                <MicroStat label="Calcium" value={dailyTotals.calcium} unit="mg" rda={1000} color="#c084fc" />
+                <MicroStat label="Fiber" value={dailyTotals.fiber} unit="g" rda={microTargets.fiber.rda} color="#34d399" />
+                <MicroStat label="Sodium" value={dailyTotals.sodium} unit="mg" rda={microTargets.sodium.rda} limit color="#fb923c" />
+                <MicroStat label="Potassium" value={dailyTotals.potassium} unit="mg" rda={microTargets.potassium.rda} color="#60a5fa" />
+                <MicroStat label="Sugar" value={dailyTotals.sugar} unit="g" rda={microTargets.sugar.rda} limit color="#fb7185" />
+                <MicroStat label="Iron" value={dailyTotals.iron} unit="mg" rda={microTargets.iron.rda} color="#f87171" />
+                <MicroStat label="Calcium" value={dailyTotals.calcium} unit="mg" rda={microTargets.calcium.rda} color="#c084fc" />
               </div>
               <div className="mt-4 pt-4 border-t border-zinc-800 grid grid-cols-4 gap-2">
                 {[
@@ -302,7 +307,7 @@ export default function Dashboard() {
             <MacroTrendChart days={trendRange} targets={userData?.targets} />
             <ActivityChart days={trendRange} />
             <WaterChart days={trendRange} waterGoal={userData?.profile?.waterGoalOz} />
-            <NutrientExplorerChart days={trendRange} />
+            <NutrientExplorerChart days={trendRange} healthProfile={userData?.profile?.healthProfile} />
             <WeeklyReport profile={userData?.profile} />
           </div>
         )}

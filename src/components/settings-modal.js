@@ -5,7 +5,7 @@ import { X, Sparkles, Cloud, Download, LogOut } from 'lucide-react';
 import {
   storage, pushAllData, pullRemoteData, getLastSync, clearSyncCode, exportAllData,
 } from '@/lib/storage';
-import { calculateTargets } from '@/lib/trends';
+import { calculateTargets, HEALTH_PROFILES } from '@/lib/trends';
 
 function SyncSection() {
   const [lastSync, setLastSync] = useState(null);
@@ -86,6 +86,7 @@ export default function SettingsModal({ currentProfile, onClose }) {
   const [height, setHeight] = useState(currentProfile?.height ?? '');
   const [goalWeight, setGoalWeight] = useState(currentProfile?.goalWeight ?? '');
   const [activityLevel, setActivityLevel] = useState(currentProfile?.activityLevel ?? 'sedentary');
+  const [healthProfile, setHealthProfile] = useState(currentProfile?.healthProfile ?? 'normal');
 
   const [calories, setCalories] = useState('');
   const [protein, setProtein] = useState('');
@@ -127,6 +128,7 @@ export default function SettingsModal({ currentProfile, onClose }) {
       height: parsedHeight,
       goalWeight: parsedGoalWeight,
       activityLevel,
+      healthProfile,
       waterGoalOz: parsedWater,
     });
     storage.setTargets({
@@ -218,12 +220,27 @@ export default function SettingsModal({ currentProfile, onClose }) {
               <option value="very_active">Very Active</option>
             </select>
           </div>
+          <div>
+            <label className="block text-xs text-zinc-400 mb-1">Health Profile</label>
+            <select
+              value={healthProfile}
+              onChange={e => setHealthProfile(e.target.value)}
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
+            >
+              {Object.entries(HEALTH_PROFILES).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+            <p className="text-[10px] text-zinc-500 mt-1">
+              General guideline-based presets, not medical advice — consult your doctor for personalized targets.
+            </p>
+          </div>
         </div>
 
         <button
           type="button"
           onClick={() => {
-            const result = calculateTargets({ age, weight, height, goalWeight, activityLevel });
+            const result = calculateTargets({ age, weight, height, goalWeight, activityLevel, healthProfile });
             if (!result) {
               alert('Enter age, weight, and height to auto-calculate targets.');
               return;

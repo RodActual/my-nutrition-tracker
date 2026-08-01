@@ -21,6 +21,14 @@ export function calcTDEE(profile) {
   return bmr * (ACTIVITY_MULTIPLIERS[profile.activityLevel] ?? 1.55);
 }
 
+export const HEALTH_PROFILES = {
+  normal: 'Normal',
+  diabetic: 'Diabetic-Friendly',
+  heart_healthy: 'Heart-Healthy',
+  low_sodium: 'Low-Sodium',
+  high_protein: 'High-Protein',
+};
+
 export function calculateTargets(profile) {
   const tdee = calcTDEE(profile);
   if (tdee == null) return null;
@@ -29,13 +37,42 @@ export function calculateTargets(profile) {
   const diff = gw - w;
   const adjustment = diff < 0 ? Math.max(diff * 11, -750) : Math.min(diff * 11, 500);
   const goalCalories = Math.round(tdee + adjustment);
-  const proteinG = Math.round(w * 0.9);
-  const fatG = Math.round((goalCalories * 0.25) / 9);
-  const carbsG = Math.round((goalCalories - proteinG * 4 - fatG * 9) / 4);
-  // Water: half bodyweight (lbs) in oz, plus a bump for higher activity
+
+  const health = profile.healthProfile ?? 'normal';
+  let proteinG, fatG, carbsG;
+
+  if (health === 'diabetic') {
+    // Carbs capped at 35% of calories, protein up, fat fills the remainder (floored at 20% cal)
+    carbsG = Math.round((goalCalories * 0.35) / 4);
+    proteinG = Math.round(w * 1.0);
+    const fatCalMin = goalCalories * 0.2;
+    fatG = Math.max(Math.round(fatCalMin / 9), Math.round((goalCalories - proteinG * 4 - carbsG * 4) / 9));
+  } else if (health === 'high_protein') {
+    proteinG = Math.round(w * 1.2);
+    fatG = Math.round((goalCalories * 0.25) / 9);
+    carbsG = Math.round((goalCalories - proteinG * 4 - fatG * 9) / 4);
+  } else if (health === 'heart_healthy') {
+    proteinG = Math.round(w * 0.8);
+    fatG = Math.round((goalCalories * 0.25) / 9);
+    carbsG = Math.round((goalCalories - proteinG * 4 - fatG * 9) / 4);
+  } else {
+    // normal, low_sodium (macros identical to normal)
+    proteinG = Math.round(w * 0.9);
+    fatG = Math.round((goalCalories * 0.25) / 9);
+    carbsG = Math.round((goalCalories - proteinG * 4 - fatG * 9) / 4);
+  }
+
+  // Water: half bodyweight (lbs) in oz, plus a bump for higher activity — unaffected by health profile
   const activityBump = { active: 8, very_active: 16 }[profile.activityLevel] ?? 0;
   const waterOz = Math.round(w * 0.5 + activityBump);
-  return { calories: goalCalories, protein: proteinG, carbs: Math.max(carbsG, 0), fat: fatG, water: waterOz };
+
+  return {
+    calories: goalCalories,
+    protein: proteinG,
+    carbs: Math.max(carbsG, 0),
+    fat: Math.max(fatG, 0),
+    water: waterOz,
+  };
 }
 
 export function toDateStr(d) {
@@ -99,6 +136,19 @@ export const MICRONUTRIENTS = [
   { key: 'vitD', label: 'Vitamin D', unit: 'mcg', rda: 20 },
   { key: 'vitB12', label: 'Vitamin B12', unit: 'mcg', rda: 2.4 },
 ];
+
+// sodium/fiber/sugar overrides per health profile — every other nutrient stays constant
+const MICRO_OVERRIDES = {
+  diabetic: { fiber: 45, sugar: 25 },
+  heart_healthy: { sodium: 1500, fiber: 40 },
+  low_sodium: { sodium: 1500 },
+};
+
+export function getMicronutrientTargets(healthProfile) {
+  const overrides = MICRO_OVERRIDES[healthProfile];
+  if (!overrides) return MICRONUTRIENTS;
+  return MICRONUTRIENTS.map(m => (m.key in overrides ? { ...m, rda: overrides[m.key] } : m));
+}
 
 // Daily totals of one nutrient key across the given dates (food logs only)
 export function getDailyNutrientTotals(dates, key) {
