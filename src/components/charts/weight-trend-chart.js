@@ -28,33 +28,48 @@ export default function WeightTrendChart({ days = 30, profile, compact = false }
 
   useEffect(() => {
     const all = storage.getWeightLogs();
-    const inRange = days === 0
-      ? all
-      : all.filter(l => lastNDates(days).includes(l.date));
+    const byDate = new Map(all.map(l => [l.date, l.weight]));
 
-    let points = movingAverage(
-      inRange.map(l => ({ date: l.date, label: formatShortDate(l.date), weight: l.weight, predicted: null })),
-      'weight'
-    );
+    // Build one entry per calendar day in range (weight: null on days without a
+    // weigh-in) so sparse weigh-ins don't collapse into a tiny sliver next to a
+    // dense daily projection — Recharts spaces the axis per array entry, not
+    // by real elapsed time, so entry count per side has to reflect real days.
+    let points;
+    if (days === 0) {
+      points = movingAverage(
+        all.map(l => ({ date: l.date, label: formatShortDate(l.date), weight: l.weight, predicted: null })),
+        'weight'
+      );
+    } else {
+      const calendarDates = lastNDates(days);
+      points = movingAverage(
+        calendarDates.map(date => ({ date, label: formatShortDate(date), weight: byDate.get(date) ?? null, predicted: null })),
+        'weight'
+      );
+    }
 
-    // Cap the projection so history keeps at least half the chart width
     const projDays = Math.max(14, Math.min(60, days === 0 ? 60 : days));
     const projection = profile ? getProjection({ profile, daysOut: projDays }) : null;
-    if (projection && inRange.length) {
+    if (projection && points.length) {
       const projPoints = projection.points.map(p => ({
         date: p.date, label: formatShortDate(p.date), weight: null, ma: null, predicted: p.predicted,
       }));
-      // Anchor: first projection point overlaps latest weigh-in
-      if (projPoints.length) projPoints[0].weight = inRange[inRange.length - 1].weight;
-      points = [...points, ...projPoints.slice(1)];
-      if (projPoints.length) points[inRange.length - 1].predicted = projPoints[0].predicted;
+      const anchorIdx = points.findIndex(p => p.date === projPoints[0]?.date);
+      if (anchorIdx !== -1) {
+        points[anchorIdx].predicted = projPoints[0].predicted;
+        points = [...points.slice(0, anchorIdx + 1), ...projPoints.slice(1)];
+      } else {
+        // Latest weigh-in falls outside the visible range — tack the projection on after
+        points = [...points, ...projPoints];
+      }
     }
 
     setData(points);
 
-    if (!compact && inRange.length) {
+    const lastReal = all.length ? all[all.length - 1] : null;
+    if (!compact && lastReal) {
       const smoothed = points.filter(p => p.ma != null);
-      const trend = smoothed.length ? smoothed[smoothed.length - 1].ma : inRange[inRange.length - 1].weight;
+      const trend = smoothed.length ? smoothed[smoothed.length - 1].ma : lastReal.weight;
       const weekAgoIdx = Math.max(0, smoothed.length - 8);
       const weekDelta = smoothed.length > 1
         ? Math.round((trend - smoothed[weekAgoIdx].ma) * 10) / 10
@@ -62,7 +77,7 @@ export default function WeightTrendChart({ days = 30, profile, compact = false }
       setStats({
         trend,
         weekDelta,
-        scale: inRange[inRange.length - 1].weight,
+        scale: lastReal.weight,
         goal: Number(profile?.goalWeight) || null,
         goalDate: projection?.goalDate ?? null,
         hasProjection: !!projection,
@@ -118,7 +133,7 @@ export default function WeightTrendChart({ days = 30, profile, compact = false }
       <ResponsiveContainer width="100%" height={compact ? 160 : 260}>
         <ComposedChart data={data}>
           {!compact && <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" />}
-          <XAxis dataKey="label" tick={{ fill: '#a1a1aa', fontSize: 11 }} minTickGap={30} />
+          <XAxis dataKey="label" tick={{ fill: '#a1a1aa', fontSize: 11 }} minTickGap={30} interval="preserveStartEnd" />
           <YAxis
             tick={{ fill: '#a1a1aa', fontSize: 11 }}
             domain={['dataMin - 2', 'dataMax + 2']}
