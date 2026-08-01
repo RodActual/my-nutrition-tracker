@@ -208,7 +208,7 @@ export const storage = {
   // Weight logs
   getWeightLogs: () => read(KEYS.weights, []),
   addWeightLog: ({ weight, date }) => {
-    const all = read(KEYS.weights, []);
+    const all = read(KEYS.weights, []).filter(w => w.date !== date);
     const rounded = Math.round(Number(weight) * 10) / 10;
     const entry = { weight: rounded, date, id: uid(), timestamp: new Date().toISOString() };
     write(KEYS.weights, [...all, entry].sort((a, b) => a.date.localeCompare(b.date)));
