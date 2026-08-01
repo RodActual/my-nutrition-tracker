@@ -52,8 +52,8 @@ export default function WaterChart({ days = 30, waterGoal }) {
           <XAxis dataKey="label" tick={{ fill: '#a1a1aa', fontSize: 11 }} minTickGap={30} />
           <YAxis tick={{ fill: '#a1a1aa', fontSize: 11 }} width={30} />
           <Tooltip content={<ChartTooltip />} cursor={{ fill: '#27272a' }} />
-          {waterGoal ? <ReferenceLine y={Number(waterGoal)} stroke="#38bdf8" strokeDasharray="4 4" /> : null}
-          <Bar dataKey="oz" fill="#38bdf8" radius={[3, 3, 0, 0]} />
+          {waterGoal ? <ReferenceLine y={Number(waterGoal)} stroke="#38bdf8" strokeDasharray="4 4" label={{ value: 'Goal', position: 'insideTopRight', fill: '#38bdf8', fontSize: 10 }} /> : null}
+          <Bar dataKey="oz" name="Water (oz)" fill="#38bdf8" radius={[3, 3, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>

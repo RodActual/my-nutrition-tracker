@@ -7,6 +7,19 @@ import {
 } from 'recharts';
 import { getBestTDEE, getDailyBalances, lastNDates, formatShortDate } from '@/lib/trends';
 
+function DotLegend({ items }) {
+  return (
+    <div className="flex items-center gap-3 mb-2">
+      {items.map(({ color, label }) => (
+        <div key={label} className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
+          <span className="text-[10px] font-semibold text-[var(--text-tertiary)]">{label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ChartTooltip({ active, payload }) {
   if (!active || !payload?.length) return null;
   const p = payload[0].payload;
@@ -75,6 +88,7 @@ export default function EnergyBalanceChart({ days = 30, profile }) {
             : ' · formula estimate (unlocks measured TDEE with 2+ weigh-ins over 14 days)'}
         </p>
       )}
+      <DotLegend items={[{ color: '#10b981', label: 'Deficit' }, { color: '#f87171', label: 'Surplus' }]} />
       <ResponsiveContainer width="100%" height={200}>
         <BarChart data={data}>
           <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" />
@@ -82,7 +96,7 @@ export default function EnergyBalanceChart({ days = 30, profile }) {
           <YAxis tick={{ fill: '#a1a1aa', fontSize: 11 }} width={40} />
           <Tooltip content={<ChartTooltip />} cursor={{ fill: '#27272a' }} />
           <ReferenceLine y={0} stroke="#71717a" />
-          <Bar dataKey="balance" radius={[3, 3, 0, 0]}>
+          <Bar dataKey="balance" name="Balance" radius={[3, 3, 0, 0]}>
             {data.map((d) => (
               <Cell key={d.date} fill={d.balance <= 0 ? '#10b981' : '#f87171'} />
             ))}

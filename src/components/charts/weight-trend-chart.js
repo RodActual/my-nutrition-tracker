@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import {
-  ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+  ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ReferenceLine, ResponsiveContainer,
 } from 'recharts';
 import { storage } from '@/lib/storage';
@@ -140,11 +140,12 @@ export default function WeightTrendChart({ days = 30, profile, compact = false }
             width={35}
           />
           <Tooltip content={<ChartTooltip />} />
-          {stats?.goal && <ReferenceLine y={stats.goal} stroke="#f59e0b" strokeDasharray="4 4" />}
-          <Line type="monotone" dataKey="ma" stroke="#71717a" strokeWidth={1} dot={false} connectNulls />
-          <Line type="monotone" dataKey="weight" stroke="#10b981" strokeWidth={2}
+          {!compact && <Legend wrapperStyle={{ fontSize: 11 }} formatter={(v) => <span style={{ color: '#a1a1aa' }}>{v}</span>} />}
+          {stats?.goal && <ReferenceLine y={stats.goal} stroke="#f59e0b" strokeDasharray="4 4" label={!compact ? { value: 'Goal', position: 'insideTopRight', fill: '#f59e0b', fontSize: 10 } : undefined} />}
+          <Line type="monotone" dataKey="weight" name="Weight" stroke="#10b981" strokeWidth={2}
             dot={{ r: 2.5, fill: '#10b981' }} activeDot={{ r: 4, fill: '#10b981' }} connectNulls />
-          <Line type="monotone" dataKey="predicted" stroke="#10b981" strokeWidth={2}
+          <Line type="monotone" dataKey="ma" name="7-day trend" stroke="#71717a" strokeWidth={1} dot={false} connectNulls />
+          <Line type="monotone" dataKey="predicted" name="Predicted" stroke="#10b981" strokeWidth={2}
             strokeDasharray="5 5" strokeOpacity={0.6} dot={false} connectNulls />
         </ComposedChart>
       </ResponsiveContainer>

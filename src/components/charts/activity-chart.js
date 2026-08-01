@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import {
-  ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
 import { storage } from '@/lib/storage';
 import { getDailyBalances, lastNDates, formatShortDate } from '@/lib/trends';
@@ -53,8 +53,9 @@ export default function ActivityChart({ days = 30 }) {
           <YAxis yAxisId="steps" tick={{ fill: '#a1a1aa', fontSize: 11 }} width={40} />
           <YAxis yAxisId="active" orientation="right" tick={{ fill: '#a1a1aa', fontSize: 11 }} width={35} />
           <Tooltip content={<ChartTooltip />} cursor={{ fill: '#27272a' }} />
-          <Bar yAxisId="steps" dataKey="steps" fill="#3b82f6" fillOpacity={0.7} radius={[3, 3, 0, 0]} />
-          <Line yAxisId="active" type="monotone" dataKey="active" stroke="#10b981" strokeWidth={2} dot={false} />
+          <Legend wrapperStyle={{ fontSize: 11 }} formatter={(v) => <span style={{ color: '#a1a1aa' }}>{v}</span>} />
+          <Bar yAxisId="steps" dataKey="steps" name="Steps" fill="#3b82f6" fillOpacity={0.7} radius={[3, 3, 0, 0]} />
+          <Line yAxisId="active" type="monotone" dataKey="active" name="Active kcal" stroke="#10b981" strokeWidth={2} dot={false} />
         </ComposedChart>
       </ResponsiveContainer>
     </div>

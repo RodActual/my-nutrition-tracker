@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
 import { getDailyBalances, lastNDates, formatShortDate } from '@/lib/trends';
 
@@ -66,9 +66,10 @@ export default function MacroTrendChart({ days = 30, targets }) {
           <XAxis dataKey="label" tick={{ fill: '#a1a1aa', fontSize: 11 }} minTickGap={30} />
           <YAxis tick={{ fill: '#a1a1aa', fontSize: 11 }} width={35} />
           <Tooltip content={<ChartTooltip />} cursor={{ fill: '#27272a' }} />
-          <Bar dataKey="protein" stackId="m" fill="#10b981" />
-          <Bar dataKey="carbs" stackId="m" fill="#60a5fa" />
-          <Bar dataKey="fats" stackId="m" fill="#f59e0b" radius={[3, 3, 0, 0]} />
+          <Legend wrapperStyle={{ fontSize: 11 }} formatter={(v) => <span style={{ color: '#a1a1aa' }}>{v}</span>} />
+          <Bar dataKey="protein" name="Protein" stackId="m" fill="#10b981" />
+          <Bar dataKey="carbs" name="Carbs" stackId="m" fill="#60a5fa" />
+          <Bar dataKey="fats" name="Fat" stackId="m" fill="#f59e0b" radius={[3, 3, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>

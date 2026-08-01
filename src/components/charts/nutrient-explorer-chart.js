@@ -7,6 +7,19 @@ import {
 } from 'recharts';
 import { getMicronutrientTargets, getDailyNutrientTotals, lastNDates, formatShortDate } from '@/lib/trends';
 
+function DotLegend({ items }) {
+  return (
+    <div className="flex items-center gap-3 mb-2">
+      {items.map(({ color, label }) => (
+        <div key={label} className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
+          <span className="text-[10px] font-semibold text-[var(--text-tertiary)]">{label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function NutrientExplorerChart({ days = 30, healthProfile }) {
   const [nutrientKey, setNutrientKey] = useState('fiber');
   const [data, setData] = useState([]);
@@ -67,20 +80,25 @@ export default function NutrientExplorerChart({ days = 30, healthProfile }) {
           No {nutrient.label.toLowerCase()} data in range — log foods with this nutrient to see it here
         </p>
       ) : (
+        <>
+          <DotLegend items={nutrient.limit
+            ? [{ color: '#10b981', label: 'Within limit' }, { color: '#ef4444', label: 'Over limit' }]
+            : [{ color: '#10b981', label: 'Target met' }, { color: '#f59e0b', label: 'Under target' }]} />
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={data}>
             <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" />
             <XAxis dataKey="label" tick={{ fill: '#a1a1aa', fontSize: 11 }} minTickGap={30} />
             <YAxis tick={{ fill: '#a1a1aa', fontSize: 11 }} width={40} />
             <Tooltip content={<ChartTooltip />} cursor={{ fill: '#27272a' }} />
-            <ReferenceLine y={nutrient.rda} stroke={nutrient.limit ? '#ef4444' : '#71717a'} strokeDasharray="4 4" />
-            <Bar dataKey="value" radius={[3, 3, 0, 0]}>
+            <ReferenceLine y={nutrient.rda} stroke={nutrient.limit ? '#ef4444' : '#71717a'} strokeDasharray="4 4" label={{ value: nutrient.limit ? 'Limit' : 'Target', position: 'insideTopRight', fill: '#a1a1aa', fontSize: 10 }} />
+            <Bar dataKey="value" name={nutrient.label} radius={[3, 3, 0, 0]}>
               {data.map(d => (
                 <Cell key={d.date} fill={barColor(d.value)} />
               ))}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
+        </>
       )}
     </div>
   );
