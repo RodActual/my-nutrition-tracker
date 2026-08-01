@@ -6,7 +6,7 @@ import {
   ReferenceLine, ResponsiveContainer,
 } from 'recharts';
 import { storage } from '@/lib/storage';
-import { getProjection, movingAverage, formatShortDate, lastNDates } from '@/lib/trends';
+import { getProjection, movingAverage, formatShortDate, formatFullDate, lastNDates } from '@/lib/trends';
 
 function ChartTooltip({ active, payload }) {
   if (!active || !payload?.length) return null;
@@ -106,7 +106,7 @@ export default function WeightTrendChart({ days = 30, profile, compact = false }
             {stats.goalDate && stats.goal ? (
               <>
                 <p className="text-[9px] font-bold text-[var(--text-tertiary)] uppercase">On pace</p>
-                <p className="text-sm font-bold text-emerald-400">{stats.goal} lbs by {formatShortDate(stats.goalDate)}</p>
+                <p className="text-sm font-bold text-emerald-400">{stats.goal} lbs by {formatFullDate(stats.goalDate)}</p>
               </>
             ) : !stats.hasProjection ? (
               <p className="text-[10px] text-[var(--text-tertiary)] pt-3">Log more days to unlock predictions</p>

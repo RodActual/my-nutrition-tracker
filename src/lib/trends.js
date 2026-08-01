@@ -111,6 +111,15 @@ export function formatShortDate(dateStr) {
   return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+// Standalone date text (not chart axis ticks) — dd-MM-yyyy per user preference
+export function formatFullDate(dateStr) {
+  const d = new Date(dateStr + 'T12:00:00');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yyyy = d.getFullYear();
+  return `${dd}-${mm}-${yyyy}`;
+}
+
 // Per-day intake/active/balance/macros.
 // intake = non-AppleHealth log calories; active = -(AppleHealth calories, stored negative)
 export function getDailyBalances(dates, tdee) {

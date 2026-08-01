@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Trash2, List } from 'lucide-react';
 import { storage } from '@/lib/storage';
-import { formatShortDate } from '@/lib/trends';
+import { formatShortDate, formatFullDate } from '@/lib/trends';
 
 export default function WeightHistory({ onChanged }) {
   const [logs, setLogs] = useState([]);
@@ -16,7 +16,7 @@ export default function WeightHistory({ onChanged }) {
   useEffect(() => { refresh(); }, []);
 
   const remove = (id, date) => {
-    if (!window.confirm(`Delete the weigh-in from ${formatShortDate(date)}?`)) return;
+    if (!window.confirm(`Delete the weigh-in from ${formatFullDate(date)}?`)) return;
     storage.deleteWeightLog(id);
     refresh();
     onChanged?.();
@@ -48,12 +48,12 @@ export default function WeightHistory({ onChanged }) {
             >
               <div className="flex items-baseline gap-3">
                 <span className="text-sm font-bold text-[var(--text-primary)]">{log.weight} lbs</span>
-                <span className="text-xs text-[var(--text-tertiary)]">{formatShortDate(log.date)}</span>
+                <span className="text-xs text-[var(--text-tertiary)]">{formatFullDate(log.date)}</span>
               </div>
               <button
                 type="button"
                 onClick={() => remove(log.id, log.date)}
-                aria-label={`Delete weigh-in from ${formatShortDate(log.date)}`}
+                aria-label={`Delete weigh-in from ${formatFullDate(log.date)}`}
                 className="p-1 text-[var(--text-tertiary)] hover:text-rose-400 transition-colors"
               >
                 <Trash2 size={14} />

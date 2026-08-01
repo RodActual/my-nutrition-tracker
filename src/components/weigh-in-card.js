@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Scale, Plus, Check } from 'lucide-react';
 import { storage } from '@/lib/storage';
-import { formatShortDate } from '@/lib/trends';
+import { formatShortDate, formatFullDate } from '@/lib/trends';
 
 export default function WeighInCard({ onSaved }) {
   const [latest, setLatest] = useState(null);
@@ -67,7 +67,7 @@ export default function WeighInCard({ onSaved }) {
               <span className="text-xs text-[var(--text-tertiary)] font-bold ml-0.5">lbs</span>
             </p>
             <p className="text-[9px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider">
-              {latest ? (loggedToday ? 'Weighed in today' : `Last: ${formatShortDate(latest.date)}`) : 'No weigh-ins yet'}
+              {latest ? (loggedToday ? 'Weighed in today' : `Last: ${formatFullDate(latest.date)}`) : 'No weigh-ins yet'}
             </p>
           </div>
           <button

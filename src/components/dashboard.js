@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { storage } from '@/lib/storage';
-import { getMicronutrientTargets } from '@/lib/trends';
+import { getMicronutrientTargets, formatFullDate } from '@/lib/trends';
 import { Home, Plus, BarChart2, Settings, ScanLine, Type, Zap, ChevronLeft, ChevronRight } from 'lucide-react';
 import DailyProgress from './daily-progress';
 import BarcodeScanner from './barcode-scanner';
@@ -208,9 +208,7 @@ export default function Dashboard() {
                 <ChevronLeft size={20} />
               </button>
               <span className="text-sm font-bold text-[var(--text-primary)]">
-                {isToday
-                  ? 'Today'
-                  : new Date(selectedDate + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                {isToday ? 'Today' : formatFullDate(selectedDate)}
               </span>
               <button onClick={() => changeDate(1)} disabled={isToday} className="p-1 text-[var(--text-secondary)] active:text-[var(--text-primary)] transition-colors disabled:opacity-20">
                 <ChevronRight size={20} />
