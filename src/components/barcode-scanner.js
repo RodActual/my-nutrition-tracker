@@ -10,6 +10,11 @@ export default function BarcodeScanner({ onResult, onClose }) {
   const scannerRef = useRef(null);
   const isScanningRef = useRef(false);
   const restartRef = useRef(null);
+  // Guards against a race where the component unmounts (scanner closed) while
+  // html5QrCode.start() is still resolving — without this, a camera that
+  // finishes starting after unmount never gets stopped, and stays locked for
+  // the next scanner that tries to open, causing intermittent launch failures.
+  const mountedRef = useRef(true);
 
   const onResultRef = useRef(onResult);
   const onCloseRef = useRef(onClose);
@@ -49,6 +54,7 @@ export default function BarcodeScanner({ onResult, onClose }) {
   }, []);
 
   useEffect(() => {
+    mountedRef.current = true;
     const html5QrCode = new Html5Qrcode("reader");
     scannerRef.current = html5QrCode;
 
@@ -66,8 +72,15 @@ export default function BarcodeScanner({ onResult, onClose }) {
           (decodedText) => handleScanSuccess(decodedText),
           () => { /* ignore per-frame errors */ }
         );
+        if (!mountedRef.current) {
+          // Closed before the camera finished starting — release it immediately
+          // instead of leaving it locked for the next scanner attempt.
+          try { await html5QrCode.stop(); html5QrCode.clear(); } catch { /* already stopped */ }
+          return;
+        }
         isScanningRef.current = true;
       } catch (err) {
+        if (!mountedRef.current) return;
         console.error("Error starting scanner:", err);
         // FIX #6: Surface camera errors to the user with a clear message.
         setError("Camera access denied. Please allow camera permissions and try again.");
@@ -86,6 +99,7 @@ export default function BarcodeScanner({ onResult, onClose }) {
     };
 
     return () => {
+      mountedRef.current = false;
       if (isScanningRef.current) {
         isScanningRef.current = false;
         html5QrCode.stop().then(() => {

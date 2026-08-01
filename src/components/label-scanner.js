@@ -11,6 +11,11 @@ export default function LabelScanner({ onResult, onClose }) {
   const canvasRef = useRef(null);
 
   const streamRef = useRef(null);
+  // Guards against a race where the component unmounts (scanner closed) while
+  // getUserMedia is still resolving — without this, the stream that arrives
+  // after unmount never gets released, and the camera stays locked for the
+  // next scanner that tries to open, causing intermittent launch failures.
+  const mountedRef = useRef(true);
 
   const stopCamera = () => {
     if (streamRef.current) {
@@ -31,9 +36,16 @@ export default function LabelScanner({ onResult, onClose }) {
           advanced: [{ focusMode: 'continuous' }],
         },
       });
+      if (!mountedRef.current) {
+        // Closed before the camera finished starting — release it immediately
+        // instead of leaving it locked for the next scanner attempt.
+        stream.getTracks().forEach(track => track.stop());
+        return;
+      }
       streamRef.current = stream;
       if (videoRef.current) videoRef.current.srcObject = stream;
     } catch (err) {
+      if (!mountedRef.current) return;
       console.error("Camera error:", err);
       setError("Camera access denied. Please allow camera permissions and try again.");
     }
@@ -47,8 +59,12 @@ export default function LabelScanner({ onResult, onClose }) {
   };
 
   useEffect(() => {
+    mountedRef.current = true;
     startCamera();
-    return stopCamera;
+    return () => {
+      mountedRef.current = false;
+      stopCamera();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
