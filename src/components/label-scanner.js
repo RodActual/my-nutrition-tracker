@@ -25,30 +25,48 @@ export default function LabelScanner({ onResult, onClose }) {
     if (videoRef.current) videoRef.current.srcObject = null;
   };
 
+  const openStream = async (constraints) => navigator.mediaDevices.getUserMedia({ video: constraints });
+
   const startCamera = async () => {
+    let stream;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: 'environment',
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-          // Hint continuous autofocus where the browser supports it
-          advanced: [{ focusMode: 'continuous' }],
-        },
+      // Full-res rear camera with a soft (not "exact") facingMode preference —
+      // some devices throw OverconstrainedError if the ideal resolution/camera
+      // combo isn't available, so we retry with progressively looser constraints.
+      stream = await openStream({
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
+        advanced: [{ focusMode: 'continuous' }],
       });
-      if (!mountedRef.current) {
-        // Closed before the camera finished starting — release it immediately
-        // instead of leaving it locked for the next scanner attempt.
-        stream.getTracks().forEach(track => track.stop());
+    } catch (err1) {
+      if (err1?.name === 'OverconstrainedError' || err1?.name === 'NotReadableError') {
+        try {
+          stream = await openStream({ facingMode: { ideal: 'environment' } });
+        } catch (err2) {
+          if (!mountedRef.current) return;
+          console.error('Camera error (fallback also failed):', err2);
+          setError(`Camera access failed (${err2?.name || 'unknown'}). Try closing other camera apps and reopening the scanner.`);
+          return;
+        }
+      } else {
+        if (!mountedRef.current) return;
+        console.error('Camera error:', err1);
+        const reason = err1?.name === 'NotAllowedError'
+          ? 'Camera permission was denied. Allow camera access in Settings and try again.'
+          : `Camera access failed (${err1?.name || 'unknown error'}).`;
+        setError(reason);
         return;
       }
-      streamRef.current = stream;
-      if (videoRef.current) videoRef.current.srcObject = stream;
-    } catch (err) {
-      if (!mountedRef.current) return;
-      console.error("Camera error:", err);
-      setError("Camera access denied. Please allow camera permissions and try again.");
     }
+    if (!mountedRef.current) {
+      // Closed before the camera finished starting — release it immediately
+      // instead of leaving it locked for the next scanner attempt.
+      stream.getTracks().forEach(track => track.stop());
+      return;
+    }
+    streamRef.current = stream;
+    if (videoRef.current) videoRef.current.srcObject = stream;
   };
 
   // Restarting the stream forces the camera to re-run autofocus

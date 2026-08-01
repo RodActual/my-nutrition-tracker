@@ -65,13 +65,26 @@ export default function BarcodeScanner({ onResult, onClose }) {
     };
 
     const startScanner = async () => {
+      const onFrame = (decodedText) => handleScanSuccess(decodedText);
+      const onFrameError = () => { /* ignore per-frame errors */ };
+
+      const attempt = async (cameraConstraint) => {
+        await html5QrCode.start(cameraConstraint, config, onFrame, onFrameError);
+      };
+
       try {
-        await html5QrCode.start(
-          { facingMode: "environment" },
-          config,
-          (decodedText) => handleScanSuccess(decodedText),
-          () => { /* ignore per-frame errors */ }
-        );
+        try {
+          // Soft preference first — an "exact" facingMode string can throw
+          // OverconstrainedError on devices where the rear camera is briefly
+          // unavailable (e.g. right after another scanner released it).
+          await attempt({ facingMode: { ideal: "environment" } });
+        } catch (err1) {
+          if (err1?.name === 'OverconstrainedError' || err1?.name === 'NotReadableError') {
+            await attempt({ facingMode: "environment" });
+          } else {
+            throw err1;
+          }
+        }
         if (!mountedRef.current) {
           // Closed before the camera finished starting — release it immediately
           // instead of leaving it locked for the next scanner attempt.
@@ -82,8 +95,10 @@ export default function BarcodeScanner({ onResult, onClose }) {
       } catch (err) {
         if (!mountedRef.current) return;
         console.error("Error starting scanner:", err);
-        // FIX #6: Surface camera errors to the user with a clear message.
-        setError("Camera access denied. Please allow camera permissions and try again.");
+        const reason = err?.name === 'NotAllowedError'
+          ? 'Camera permission was denied. Allow camera access in Settings and try again.'
+          : `Camera access failed (${err?.name || 'unknown error'}). Try closing other camera apps and reopening the scanner.`;
+        setError(reason);
       }
     };
 
