@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Dashboard from '@/components/dashboard';
 import SyncLogin from '@/components/sync-login';
+import PullToRefresh from '@/components/pull-to-refresh';
 import { storage, getSyncCode, pullRemoteData } from '@/lib/storage';
 
 async function syncHealthData() {
@@ -94,5 +95,9 @@ export default function Home() {
     );
   }
 
-  return <Dashboard />;
+  return (
+    <PullToRefresh>
+      <Dashboard />
+    </PullToRefresh>
+  );
 }
