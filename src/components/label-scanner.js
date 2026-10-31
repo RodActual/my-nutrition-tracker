@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { createWorker } from 'tesseract.js';
+import { cameraErrorMessage, isRetryableCameraError, retryDelayMs, sleep } from '@/lib/camera';
 
 export default function LabelScanner({ onResult, onClose }) {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -40,22 +41,21 @@ export default function LabelScanner({ onResult, onClose }) {
         advanced: [{ focusMode: 'continuous' }],
       });
     } catch (err1) {
-      if (err1?.name === 'OverconstrainedError' || err1?.name === 'NotReadableError') {
-        try {
-          stream = await openStream({ facingMode: { ideal: 'environment' } });
-        } catch (err2) {
-          if (!mountedRef.current) return;
-          console.error('Camera error (fallback also failed):', err2);
-          setError(`Camera access failed (${err2?.name || 'unknown'}). Try closing other camera apps and reopening the scanner.`);
-          return;
-        }
-      } else {
-        if (!mountedRef.current) return;
+      if (!mountedRef.current) return;
+      if (!isRetryableCameraError(err1)) {
         console.error('Camera error:', err1);
-        const reason = err1?.name === 'NotAllowedError'
-          ? 'Camera permission was denied. Allow camera access in Settings and try again.'
-          : `Camera access failed (${err1?.name || 'unknown error'}).`;
-        setError(reason);
+        setError(cameraErrorMessage(err1));
+        return;
+      }
+      // Wait out a busy camera, then retry with looser constraints.
+      await sleep(retryDelayMs(err1));
+      if (!mountedRef.current) return;
+      try {
+        stream = await openStream({ facingMode: { ideal: 'environment' } });
+      } catch (err2) {
+        if (!mountedRef.current) return;
+        console.error('Camera error (fallback also failed):', err2);
+        setError(cameraErrorMessage(err2));
         return;
       }
     }

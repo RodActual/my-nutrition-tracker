@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
+import { cameraErrorMessage, isRetryableCameraError, retryDelayMs, sleep } from '@/lib/camera';
 
 export default function BarcodeScanner({ onResult, onClose }) {
   // FIX #6: Restore the error state that was dropped in the previous fix.
@@ -74,16 +75,17 @@ export default function BarcodeScanner({ onResult, onClose }) {
 
       try {
         try {
-          // Soft preference first — an "exact" facingMode string can throw
-          // OverconstrainedError on devices where the rear camera is briefly
-          // unavailable (e.g. right after another scanner released it).
-          await attempt({ facingMode: { ideal: "environment" } });
+          // Plain string form: the config shape html5-qrcode is known to accept.
+          await attempt({ facingMode: "environment" });
         } catch (err1) {
-          if (err1?.name === 'OverconstrainedError' || err1?.name === 'NotReadableError') {
-            await attempt({ facingMode: "environment" });
-          } else {
-            throw err1;
-          }
+          if (!isRetryableCameraError(err1) || !mountedRef.current) throw err1;
+          // Real fallback: let a busy camera release, then pick a device by id.
+          await sleep(retryDelayMs(err1));
+          if (!mountedRef.current) return;
+          const cameras = await Html5Qrcode.getCameras();
+          if (!cameras?.length) throw err1;
+          const rear = cameras.find((c) => /back|rear|environment/i.test(c.label)) || cameras[cameras.length - 1];
+          await attempt(rear.id);
         }
         if (!mountedRef.current) {
           // Closed before the camera finished starting — release it immediately
@@ -95,10 +97,7 @@ export default function BarcodeScanner({ onResult, onClose }) {
       } catch (err) {
         if (!mountedRef.current) return;
         console.error("Error starting scanner:", err);
-        const reason = err?.name === 'NotAllowedError'
-          ? 'Camera permission was denied. Allow camera access in Settings and try again.'
-          : `Camera access failed (${err?.name || 'unknown error'}). Try closing other camera apps and reopening the scanner.`;
-        setError(reason);
+        setError(cameraErrorMessage(err));
       }
     };
 
