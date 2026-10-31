@@ -78,6 +78,7 @@ export default function LabelScanner({ onResult, onClose }) {
 
   // Restarting the stream forces the camera to re-run autofocus
   const refocus = async () => {
+    if (isProcessing || !mountedRef.current) return; // don't swap the stream mid-OCR
     setError(null);
     stopCamera();
     await startCamera();
@@ -133,8 +134,9 @@ export default function LabelScanner({ onResult, onClose }) {
     }
     ctx.putImageData(img, 0, 0);
 
+    let worker = null;
     try {
-      const worker = await createWorker('eng', 1, {
+      worker = await createWorker('eng', 1, {
         logger: m => {
           if (m.status === 'recognizing text') {
             setProgress(parseInt(m.progress * 100));
@@ -146,6 +148,7 @@ export default function LabelScanner({ onResult, onClose }) {
 
       const { data: { text } } = await worker.recognize(canvas.toDataURL('image/png'));
       await worker.terminate();
+      worker = null;
 
       const parsedData = parseNutritionText(text);
       const n = parsedData.nutriments;
@@ -162,6 +165,8 @@ export default function LabelScanner({ onResult, onClose }) {
       setIsProcessing(false);
       setProgress(0);
       setError('Scan failed — try again, or enter the values manually.');
+      // Free the WASM worker; otherwise every failed scan leaks one.
+      if (worker) { try { await worker.terminate(); } catch { /* already gone */ } }
     }
   };
 

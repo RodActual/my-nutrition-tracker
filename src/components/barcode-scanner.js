@@ -25,12 +25,12 @@ export default function BarcodeScanner({ onResult, onClose }) {
     onCloseRef.current = onClose;
   }, [onResult, onClose]);
 
-  const handleScanSuccess = useCallback(async (decodedText) => {
-    if (!isScanningRef.current) return;
+  const handleScanSuccess = useCallback(async (decodedText, html5QrCode) => {
+    // Ignore late frames from a superseded instance (StrictMode remount).
+    if (!isScanningRef.current || html5QrCode !== scannerRef.current) return;
     isScanningRef.current = false;
     scanDoneRef.current = true;
 
-    const html5QrCode = scannerRef.current;
     try {
       await html5QrCode.stop();
       html5QrCode.clear();
@@ -40,8 +40,9 @@ export default function BarcodeScanner({ onResult, onClose }) {
 
     try {
       const response = await fetch(
-        `https://world.openfoodfacts.org/api/v0/product/${decodedText}.json`
+        `https://world.openfoodfacts.org/api/v0/product/${encodeURIComponent(decodedText)}.json`
       );
+      if (!response.ok) throw new Error(`Lookup failed: ${response.status}`);
       const data = await response.json();
       if (!mountedRef.current) return; // scanner closed while the lookup ran
 
@@ -75,7 +76,7 @@ export default function BarcodeScanner({ onResult, onClose }) {
     let startPromise = null;
 
     const runStart = async () => {
-      const onFrame = (decodedText) => handleScanSuccess(decodedText);
+      const onFrame = (decodedText) => handleScanSuccess(decodedText, html5QrCode);
       const onFrameError = () => { /* ignore per-frame errors */ };
 
       const attempt = async (cameraConstraint) => {
@@ -181,6 +182,14 @@ export default function BarcodeScanner({ onResult, onClose }) {
       {error ? (
         <div className="mt-6 bg-red-900/50 text-red-200 px-5 py-4 rounded-2xl text-sm font-bold border border-red-500/50 max-w-sm text-center">
           <p>{error}</p>
+          {scanDoneRef.current && (
+            <button
+              onClick={() => { setError(null); scanDoneRef.current = false; restartRef.current?.(); }}
+              className="mt-3 mr-2 bg-white/10 text-white text-xs font-black uppercase tracking-widest px-4 py-2 rounded-xl active:scale-95 transition-all"
+            >
+              Try again
+            </button>
+          )}
           <button
             onClick={onClose}
             className="mt-3 bg-red-600 text-white text-xs font-black uppercase tracking-widest px-4 py-2 rounded-xl active:scale-95 transition-all"

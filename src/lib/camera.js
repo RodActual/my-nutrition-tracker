@@ -8,7 +8,7 @@ export const cameraErrorName = (err) => {
     if (/permission denied|SecurityError/i.test(err)) return 'NotAllowedError';
     return KNOWN_NAMES.find((n) => err.includes(n)) || null;
   }
-  return err?.name || null;
+  return err?.name === 'SecurityError' ? 'NotAllowedError' : (err?.name || null);
 };
 
 export const isRetryableCameraError = (err) =>
