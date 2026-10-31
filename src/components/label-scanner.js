@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { createWorker } from 'tesseract.js';
+import { cameraErrorMessage, isRetryableCameraError, retryDelayMs, sleep } from '@/lib/camera';
 
 export default function LabelScanner({ onResult, onClose }) {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -27,7 +28,13 @@ export default function LabelScanner({ onResult, onClose }) {
 
   const openStream = async (constraints) => navigator.mediaDevices.getUserMedia({ video: constraints });
 
+  // Latest start wins: a refocus or remount during a start/retry supersedes it,
+  // and the superseded start releases whatever stream it ends up with.
+  const runIdRef = useRef(0);
+
   const startCamera = async () => {
+    const runId = ++runIdRef.current;
+    const stale = () => !mountedRef.current || runId !== runIdRef.current;
     let stream;
     try {
       // Full-res rear camera with a soft (not "exact") facingMode preference —
@@ -40,37 +47,38 @@ export default function LabelScanner({ onResult, onClose }) {
         advanced: [{ focusMode: 'continuous' }],
       });
     } catch (err1) {
-      if (err1?.name === 'OverconstrainedError' || err1?.name === 'NotReadableError') {
-        try {
-          stream = await openStream({ facingMode: { ideal: 'environment' } });
-        } catch (err2) {
-          if (!mountedRef.current) return;
-          console.error('Camera error (fallback also failed):', err2);
-          setError(`Camera access failed (${err2?.name || 'unknown'}). Try closing other camera apps and reopening the scanner.`);
-          return;
-        }
-      } else {
-        if (!mountedRef.current) return;
+      if (stale()) return;
+      if (!isRetryableCameraError(err1)) {
         console.error('Camera error:', err1);
-        const reason = err1?.name === 'NotAllowedError'
-          ? 'Camera permission was denied. Allow camera access in Settings and try again.'
-          : `Camera access failed (${err1?.name || 'unknown error'}).`;
-        setError(reason);
+        setError(cameraErrorMessage(err1));
+        return;
+      }
+      // Wait out a busy camera, then retry with looser constraints.
+      await sleep(retryDelayMs(err1));
+      if (stale()) return;
+      try {
+        stream = await openStream({ facingMode: { ideal: 'environment' } });
+      } catch (err2) {
+        if (stale()) return;
+        console.error('Camera error (fallback also failed):', err2);
+        setError(cameraErrorMessage(err2));
         return;
       }
     }
-    if (!mountedRef.current) {
+    if (stale()) {
       // Closed before the camera finished starting — release it immediately
       // instead of leaving it locked for the next scanner attempt.
       stream.getTracks().forEach(track => track.stop());
       return;
     }
+    stopCamera(); // release any stream already held before replacing it
     streamRef.current = stream;
     if (videoRef.current) videoRef.current.srcObject = stream;
   };
 
   // Restarting the stream forces the camera to re-run autofocus
   const refocus = async () => {
+    if (isProcessing || !mountedRef.current) return; // don't swap the stream mid-OCR
     setError(null);
     stopCamera();
     await startCamera();
@@ -126,8 +134,9 @@ export default function LabelScanner({ onResult, onClose }) {
     }
     ctx.putImageData(img, 0, 0);
 
+    let worker = null;
     try {
-      const worker = await createWorker('eng', 1, {
+      worker = await createWorker('eng', 1, {
         logger: m => {
           if (m.status === 'recognizing text') {
             setProgress(parseInt(m.progress * 100));
@@ -139,6 +148,7 @@ export default function LabelScanner({ onResult, onClose }) {
 
       const { data: { text } } = await worker.recognize(canvas.toDataURL('image/png'));
       await worker.terminate();
+      worker = null;
 
       const parsedData = parseNutritionText(text);
       const n = parsedData.nutriments;
@@ -155,6 +165,8 @@ export default function LabelScanner({ onResult, onClose }) {
       setIsProcessing(false);
       setProgress(0);
       setError('Scan failed — try again, or enter the values manually.');
+      // Free the WASM worker; otherwise every failed scan leaks one.
+      if (worker) { try { await worker.terminate(); } catch { /* already gone */ } }
     }
   };
 
