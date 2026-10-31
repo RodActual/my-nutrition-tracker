@@ -65,7 +65,12 @@ export default function BarcodeScanner({ onResult, onClose }) {
       aspectRatio: 1.0
     };
 
-    const startScanner = async () => {
+    // Per-effect flag: unlike mountedRef, a StrictMode remount can't flip it back,
+    // so a stale start flow always releases its own instance.
+    let cancelled = false;
+    let startPromise = null;
+
+    const runStart = async () => {
       const onFrame = (decodedText) => handleScanSuccess(decodedText);
       const onFrameError = () => { /* ignore per-frame errors */ };
 
@@ -78,16 +83,21 @@ export default function BarcodeScanner({ onResult, onClose }) {
           // Plain string form: the config shape html5-qrcode is known to accept.
           await attempt({ facingMode: "environment" });
         } catch (err1) {
-          if (!isRetryableCameraError(err1) || !mountedRef.current) throw err1;
+          if (!isRetryableCameraError(err1) || cancelled) throw err1;
           // Real fallback: let a busy camera release, then pick a device by id.
           await sleep(retryDelayMs(err1));
-          if (!mountedRef.current) return;
-          const cameras = await Html5Qrcode.getCameras();
-          if (!cameras?.length) throw err1;
-          const rear = cameras.find((c) => /back|rear|environment/i.test(c.label)) || cameras[cameras.length - 1];
+          if (cancelled) return;
+          // Any failure here must surface the original error, not the lookup's.
+          let cameras = [];
+          try { cameras = await Html5Qrcode.getCameras(); } catch { /* fall through */ }
+          // Only use a camera we can identify as rear-facing (or the only one);
+          // guessing could open the front camera or the same busy device.
+          const rear = cameras.find((c) => /back|rear|environment/i.test(c.label))
+            || (cameras.length === 1 ? cameras[0] : null);
+          if (!rear) throw err1;
           await attempt(rear.id);
         }
-        if (!mountedRef.current) {
+        if (cancelled) {
           // Closed before the camera finished starting — release it immediately
           // instead of leaving it locked for the next scanner attempt.
           try { await html5QrCode.stop(); html5QrCode.clear(); } catch { /* already stopped */ }
@@ -95,16 +105,23 @@ export default function BarcodeScanner({ onResult, onClose }) {
         }
         isScanningRef.current = true;
       } catch (err) {
-        if (!mountedRef.current) return;
+        if (cancelled) return;
         console.error("Error starting scanner:", err);
         setError(cameraErrorMessage(err));
       }
+    };
+
+    // Serialize starts: a refocus tap during a start/retry reuses the in-flight one.
+    const startScanner = () => {
+      startPromise ??= runStart().finally(() => { startPromise = null; });
+      return startPromise;
     };
 
     startScanner();
 
     // Restarting the scanner stream forces the camera to re-run autofocus
     restartRef.current = async () => {
+      if (startPromise) return;
       if (isScanningRef.current) {
         isScanningRef.current = false;
         try { await html5QrCode.stop(); } catch { /* already stopped */ }
@@ -113,6 +130,7 @@ export default function BarcodeScanner({ onResult, onClose }) {
     };
 
     return () => {
+      cancelled = true;
       mountedRef.current = false;
       if (isScanningRef.current) {
         isScanningRef.current = false;

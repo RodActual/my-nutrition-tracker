@@ -28,7 +28,20 @@ export default function LabelScanner({ onResult, onClose }) {
 
   const openStream = async (constraints) => navigator.mediaDevices.getUserMedia({ video: constraints });
 
+  // One start at a time: a refocus tap during a start/retry must not open a
+  // second stream whose tracks would never be stopped.
+  const startingRef = useRef(false);
   const startCamera = async () => {
+    if (startingRef.current) return;
+    startingRef.current = true;
+    try {
+      await runStartCamera();
+    } finally {
+      startingRef.current = false;
+    }
+  };
+
+  const runStartCamera = async () => {
     let stream;
     try {
       // Full-res rear camera with a soft (not "exact") facingMode preference —
@@ -65,6 +78,7 @@ export default function LabelScanner({ onResult, onClose }) {
       stream.getTracks().forEach(track => track.stop());
       return;
     }
+    stopCamera(); // release any stream already held before replacing it
     streamRef.current = stream;
     if (videoRef.current) videoRef.current.srcObject = stream;
   };
