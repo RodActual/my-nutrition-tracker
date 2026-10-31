@@ -14,10 +14,12 @@ export const cameraErrorName = (err) => {
 export const isRetryableCameraError = (err) =>
   ['OverconstrainedError', 'NotReadableError'].includes(cameraErrorName(err));
 
-export const cameraErrorMessage = (err) =>
-  cameraErrorName(err) === 'NotAllowedError'
-    ? 'Camera permission was denied. Allow camera access in Settings and try again.'
-    : `Camera access failed (${cameraErrorName(err) || 'unknown error'}). Try closing other camera apps and reopening the scanner.`;
+export const cameraErrorMessage = (err) => {
+  const name = cameraErrorName(err);
+  if (name === 'NotAllowedError') return 'Camera permission was denied. Allow camera access in Settings and try again.';
+  if (name === 'NotFoundError') return 'No camera was found on this device.';
+  return `Camera access failed (${name || 'unknown error'}). Try closing other camera apps and reopening the scanner.`;
+};
 
 export const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
