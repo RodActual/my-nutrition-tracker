@@ -11,6 +11,7 @@ export default function BarcodeScanner({ onResult, onClose }) {
   const scannerRef = useRef(null);
   const isScanningRef = useRef(false);
   const restartRef = useRef(null);
+  const scanDoneRef = useRef(false); // set once a barcode is read; blocks Refocus
   // Guards against a race where the component unmounts (scanner closed) while
   // html5QrCode.start() is still resolving — without this, a camera that
   // finishes starting after unmount never gets stopped, and stays locked for
@@ -27,6 +28,7 @@ export default function BarcodeScanner({ onResult, onClose }) {
   const handleScanSuccess = useCallback(async (decodedText) => {
     if (!isScanningRef.current) return;
     isScanningRef.current = false;
+    scanDoneRef.current = true;
 
     const html5QrCode = scannerRef.current;
     try {
@@ -41,6 +43,7 @@ export default function BarcodeScanner({ onResult, onClose }) {
         `https://world.openfoodfacts.org/api/v0/product/${decodedText}.json`
       );
       const data = await response.json();
+      if (!mountedRef.current) return; // scanner closed while the lookup ran
 
       if (data.status === 1) {
         onResultRef.current(data.product);
@@ -50,6 +53,7 @@ export default function BarcodeScanner({ onResult, onClose }) {
       }
     } catch (err) {
       console.error("API Error:", err);
+      if (!mountedRef.current) return;
       setError("Connection failed. Please try again.");
     }
   }, []);
@@ -99,8 +103,9 @@ export default function BarcodeScanner({ onResult, onClose }) {
         }
         if (cancelled) {
           // Closed before the camera finished starting — release it immediately
-          // instead of leaving it locked for the next scanner attempt.
-          try { await html5QrCode.stop(); html5QrCode.clear(); } catch { /* already stopped */ }
+          // instead of leaving it locked for the next scanner attempt. No clear():
+          // under a StrictMode remount the live instance shares #reader's DOM.
+          try { await html5QrCode.stop(); } catch { /* already stopped */ }
           return;
         }
         isScanningRef.current = true;
@@ -120,13 +125,20 @@ export default function BarcodeScanner({ onResult, onClose }) {
     startScanner();
 
     // Restarting the scanner stream forces the camera to re-run autofocus
+    let restarting = false;
     restartRef.current = async () => {
-      if (startPromise) return;
-      if (isScanningRef.current) {
-        isScanningRef.current = false;
-        try { await html5QrCode.stop(); } catch { /* already stopped */ }
+      // Ignore taps while a start, stop or the post-scan lookup is in progress.
+      if (startPromise || restarting || scanDoneRef.current || cancelled) return;
+      restarting = true;
+      try {
+        if (isScanningRef.current) {
+          isScanningRef.current = false;
+          try { await html5QrCode.stop(); } catch { /* already stopped */ }
+        }
+        if (!cancelled) await startScanner();
+      } finally {
+        restarting = false;
       }
-      await startScanner();
     };
 
     return () => {

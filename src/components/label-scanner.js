@@ -28,20 +28,13 @@ export default function LabelScanner({ onResult, onClose }) {
 
   const openStream = async (constraints) => navigator.mediaDevices.getUserMedia({ video: constraints });
 
-  // One start at a time: a refocus tap during a start/retry must not open a
-  // second stream whose tracks would never be stopped.
-  const startingRef = useRef(false);
-  const startCamera = async () => {
-    if (startingRef.current) return;
-    startingRef.current = true;
-    try {
-      await runStartCamera();
-    } finally {
-      startingRef.current = false;
-    }
-  };
+  // Latest start wins: a refocus or remount during a start/retry supersedes it,
+  // and the superseded start releases whatever stream it ends up with.
+  const runIdRef = useRef(0);
 
-  const runStartCamera = async () => {
+  const startCamera = async () => {
+    const runId = ++runIdRef.current;
+    const stale = () => !mountedRef.current || runId !== runIdRef.current;
     let stream;
     try {
       // Full-res rear camera with a soft (not "exact") facingMode preference —
@@ -54,7 +47,7 @@ export default function LabelScanner({ onResult, onClose }) {
         advanced: [{ focusMode: 'continuous' }],
       });
     } catch (err1) {
-      if (!mountedRef.current) return;
+      if (stale()) return;
       if (!isRetryableCameraError(err1)) {
         console.error('Camera error:', err1);
         setError(cameraErrorMessage(err1));
@@ -62,17 +55,17 @@ export default function LabelScanner({ onResult, onClose }) {
       }
       // Wait out a busy camera, then retry with looser constraints.
       await sleep(retryDelayMs(err1));
-      if (!mountedRef.current) return;
+      if (stale()) return;
       try {
         stream = await openStream({ facingMode: { ideal: 'environment' } });
       } catch (err2) {
-        if (!mountedRef.current) return;
+        if (stale()) return;
         console.error('Camera error (fallback also failed):', err2);
         setError(cameraErrorMessage(err2));
         return;
       }
     }
-    if (!mountedRef.current) {
+    if (stale()) {
       // Closed before the camera finished starting — release it immediately
       // instead of leaving it locked for the next scanner attempt.
       stream.getTracks().forEach(track => track.stop());

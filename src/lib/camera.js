@@ -4,7 +4,10 @@ const KNOWN_NAMES = ['NotAllowedError', 'NotReadableError', 'OverconstrainedErro
 
 // html5-qrcode sometimes rejects with a plain string instead of a DOMException.
 export const cameraErrorName = (err) => {
-  if (typeof err === 'string') return KNOWN_NAMES.find((n) => err.includes(n)) || null;
+  if (typeof err === 'string') {
+    if (/permission denied|SecurityError/i.test(err)) return 'NotAllowedError';
+    return KNOWN_NAMES.find((n) => err.includes(n)) || null;
+  }
   return err?.name || null;
 };
 
